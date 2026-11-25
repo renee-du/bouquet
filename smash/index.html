@@ -384,15 +384,22 @@ const peel = canvasTex(noiseNormal(), false, 6);
 const glazeN = { normalMap: peel, normalScale: new THREE.Vector2(.05, .05) };
 function porcelain(opts = {}) { return new THREE.MeshPhysicalMaterial(Object.assign({ color: 0xf7f7f3, roughness: .2, clearcoat: 1, clearcoatRoughness: .07, ior: 1.52, specularIntensity: .7 }, glazeN, opts)); }
 function biscuit(col) { return new THREE.MeshStandardMaterial({ color: col, roughness: .94, metalness: 0 }); }
-function glass(tint, dist, thick = .008) {
-  const deep = new THREE.Color(tint).multiplyScalar(.7);
-  const m = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(tint).lerp(new THREE.Color(0xffffff), .8), transmission: 1, thickness: thick, roughness: 0, ior: 1.5, dispersion: .4,
-    attenuationColor: new THREE.Color(tint), attenuationDistance: dist, specularIntensity: 1, specularColor: 0xffffff, envMapIntensity: 1.5 });
-  // looking along a wall you look through more glass: let the edges carry the colour
+function glass(tint, base, edge = .92) {
+  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: .02, metalness: 0, ior: 1.5, specularIntensity: 1, envMapIntensity: 3,
+    iridescence: .4, iridescenceIOR: 1.33, iridescenceThicknessRange: [220, 620], transparent: true, depthWrite: false });
+  // premultiplied: the tinted body lets the room through, the reflections are added on top at full strength
+  m.blending = THREE.CustomBlending; m.blendSrc = THREE.OneFactor; m.blendDst = THREE.OneMinusSrcAlphaFactor;
+  m.blendSrcAlpha = THREE.OneFactor; m.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
+  const tc = new THREE.Color(tint);
   m.onBeforeCompile = sh => {
-    sh.uniforms.uDeep = { value: deep };
-    sh.fragmentShader = 'uniform vec3 uDeep;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
-      'float fr = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.2);\n gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * uDeep, clamp(fr * .6, 0., .6));\n#include <dithering_fragment>');
+    sh.uniforms.uTint = { value: tc }; sh.uniforms.uBase = { value: base }; sh.uniforms.uEdge = { value: edge };
+    sh.fragmentShader = 'uniform vec3 uTint; uniform float uBase; uniform float uEdge;\n' + sh.fragmentShader.replace('#include <opaque_fragment>', `
+      float f1 = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
+      float fr = pow(f1, 1.25);
+      float ga = clamp(mix(uBase, uEdge, fr), 0.0, 1.0);
+      vec3 tint = mix(uTint, vec3(dot(uTint, vec3(0.3333))), 0.24);
+      vec3 bodyC = tint * mix(1.0, 0.42, fr) * mix(1.0, 0.45, pow(f1, 4.0)) * (0.72 + 0.22 * clamp(dot(totalDiffuse, vec3(0.333)), 0.0, 1.6));
+      gl_FragColor = vec4(bodyC * ga + totalSpecular * 2.6, ga);`);
   };
   return m;
 }
@@ -679,28 +686,37 @@ function makeKinds() {
     const sc = .001, t = .0028, H = .25;
     const wall = [[0, 30], [8, 31.5], [40, 30.5], [70, 33.5], [104, 27], [146, 31.5], [172, 27], [200, 16], [224, 11.5], [234, 12], [238, 13.4], [244, 12.8], [250, 11.8]];
     const pts = vessel(wall, t, sc, { bottomT: .008 });
-    const g = glass('#5fae84', .09, .01);
+    const g = glass('#6fbb96', .44);
     const fx = (th, y) => { const m = (y > .012 && y < .082) ? Math.sin((y - .012) / .07 * Math.PI) : (y > .138 && y < .196) ? Math.sin((y - .138) / .058 * Math.PI) : 0; return .0009 * m * Math.cos(th * 26); };
     return { parts: [lathe(pts, { mats: { outer: 0, inner: 0, edge: 0, rim: 0 }, uvO: cylUV(H), uvI: cylUV(H), fx, nu: 160 })], mats: [g], glass: true, tint: '#5fae84', R: .034, H, pal: ['#5aa57c', '#a8d9bd', '#2f7353', '#d3efe0'], edgeCol: '#a8d9bd', pitch: .9 };
   };
   const wine = (tint, pal, pitch) => () => {
-    const g = glass(tint, .14, .006), gt = glass(tint, .035, .03);
+    const g = glass(tint, tint === '#c9701c' ? .56 : .46), gt = glass(tint, .7);
     const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, mt = { outer: 1, inner: 1, edge: 1, rim: 1 }, uv = cylUV(.2);
     const foot = lathe([[0.0006, .0016, .0032], [.03, .0016, .0032], [.0335, .0018, .0026]], { mats: mt, uvO: uv, uvI: uv, smooth: 1 });
     const stemP = lathe([[.0034, .003, .0068], [.0019, .011, .0038], [.00165, .06, .0033], [.0032, .0685, .0064]], { mats: mt, uvO: uv, uvI: uv, nu: 20, smooth: 1 });
     const bowl = lathe([[.0035, .0705, .006], [.012, .0712, .004], [.022, .0742, .0026], [.031, .0792, .0022], [.0365, .087, .0022], [.0385, .1, .0022], [.0395, .14, .0022], [.0408, .205, .0021]], { mats: mm, uvO: uv, uvI: uv });
     return { parts: [foot, stemP, bowl], mats: [g, gt], glass: true, tint, R: .041, H: .205, pal, pitch, edgeCol: pal[2] };
   };
-  K.wineSlate = wine('#7f9ea7', ['#87a6ae', '#45656f', '#d5e4e7', '#a9c2c8'], 1);
-  K.wineRose = wine('#d7849f', ['#d98ba3', '#9c4766', '#f6d8e2', '#e8b3c4'], 1.08);
+  K.wineSlate = wine('#6f929c', ['#87a6ae', '#45656f', '#d5e4e7', '#a9c2c8'], 1);
+  K.wineRose = wine('#cf7392', ['#d98ba3', '#9c4766', '#f6d8e2', '#e8b3c4'], 1.08);
   K.wineAmber = wine('#c9701c', ['#cc7a24', '#7e3f08', '#f2cfa0', '#e3a45c'], .95);
   const tumbler = (tint, pal, pitch) => () => {
-    const g = glass(tint, .1, .008), gt = glass(tint, .028, .035);
+    const g = glass(tint, .44), gt = glass(tint, .74);
     const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, mt = { outer: 1, inner: 1, edge: 1, rim: 1 }, uv = cylUV(.12);
     const cap = lathe([[0.0006, .002, .004], [.025, .002, .004]], { mats: mt, uvO: uv, uvI: uv, smooth: 0 });
     const base = lathe([[.0128, .002, .0256], [.0115, .012, .023], [.0094, .024, .0188], [.0098, .031, .0196]], { mats: mt, uvO: uv, uvI: uv, smooth: 1 });
     const cup = lathe([[.0035, .0325, .007], [.015, .033, .005], [.026, .036, .003], [.035, .044, .0026], [.0395, .058, .0025], [.041, .08, .0025], [.0418, .122, .0024]], { mats: mm, uvO: uv, uvI: uv });
     return { parts: [cap, base, cup], mats: [g, gt], glass: true, tint, R: .042, H: .122, pal, pitch, edgeCol: pal[2] };
+  };
+  K.vaseGlass = () => {
+    const g = glass('#1d3aa6', .72, .98), gt = glass('#d6e2ea', .38, .92);
+    const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, mt = { outer: 1, inner: 1, edge: 1, rim: 1 }, uv = cylUV(.24);
+    const cap = lathe([[0.0006, .002, .004], [.0262, .002, .004]], { mats: mt, uvO: uv, uvI: uv, smooth: 0 });
+    const foot = lathe([[.0132, .002, .0264], [.0132, .0155, .0264]], { mats: mt, uvO: uv, uvI: uv, smooth: 0, nu: 40 });
+    const t = .0028, wall = [[16, 27], [30, 30.5], [70, 39], [125, 44], [170, 38], [200, 28.5], [220, 26], [232, 30], [240, 35]];
+    const shell = lathe([[0.0006, .0165, .003], [.016, .0165, .003], [.0245, .0172, .0029], ...wall.map(([y, r]) => [r * .001 - t / 2, y * .001, t])], { mats: mm, uvO: uv, uvI: uv });
+    return { parts: [cap, foot, shell], mats: [g, gt], glass: true, tint: '#2448c9', R: .045, H: .24, pal: ['#2448c9', '#6f8fe8', '#b9c9ff', '#1a2f8f'], edgeCol: '#b9c9ff', pitch: .85 };
   };
   K.tumblerPink = tumbler('#e59585', ['#e9a093', '#b5524a', '#fbdcd4', '#f2bcb1'], 1.15);
   K.tumblerTeal = tumbler('#2fb0be', ['#3db6c2', '#13707c', '#bdeef2', '#7fd3db'], 1.2);
@@ -709,7 +725,7 @@ function makeKinds() {
 const KINDS = makeKinds();
 const LAYOUTS = {
   wide: [
-    ['bottle', -.64, -.27], ['vase', -.44, -.25], ['wineSlate', -.13, -.3], ['wineRose', -.025, -.27], ['wineAmber', .08, -.3], ['tumblerPink', .37, -.27], ['tumblerTeal', .48, -.29],
+    ['bottle', -.64, -.27], ['vase', -.44, -.25], ['wineSlate', -.13, -.3], ['wineRose', -.025, -.27], ['wineAmber', .08, -.3], ['tumblerPink', .37, -.27], ['tumblerTeal', .48, -.29], ['vaseGlass', .65, -.24],
     ['mug', -.27, -.01], ['bowlFluted', .19, -.04], ['bowlBlue', .55, .02],
     ['plateBlue', -.52, .25], ['bowlGreen', -.14, .24], ['plateChintz', .2, .27], ['plateCobalt', .49, .3],
   ],
@@ -718,7 +734,7 @@ const LAYOUTS = {
     ['tumblerPink', -.22, -.37], ['mug', -.075, -.35], ['bowlFluted', .1, -.36], ['tumblerTeal', .245, -.37],
     ['plateBlue', -.11, -.07], ['bowlBlue', .18, -.08],
     ['bowlGreen', -.15, .21], ['plateCobalt', .14, .2],
-    ['plateChintz', 0, .45],
+    ['plateChintz', 0, .45], ['vaseGlass', .27, .43],
   ],
 };
 
@@ -844,6 +860,7 @@ function fitCamera(resetView = true) {
   placeCamera(VIEW.az, VIEW.el, VIEW.dist);
 }
 function orbit(dAz, dEl, zoom = 1) {
+  VIEW.lastOrbit = performance.now();
   VIEW.tAz += dAz; VIEW.tEl = clamp(VIEW.tEl + dEl, .1, 1.5); VIEW.tDist = clamp(VIEW.tDist * zoom, VIEW.fit * .35, VIEW.fit * 1.6);
 }
 
@@ -866,7 +883,10 @@ function audioInit() {
   SFX.verb = A.createConvolver(); SFX.verb.buffer = ir; const wet = A.createGain(); wet.gain.value = .16; SFX.verb.connect(wet); wet.connect(comp);
   for (const [name, n] of Object.entries(SFX_NAMES)) for (let i = 1; i <= n; i++) {
     fetch(`sfx/${name}_${i}.mp3`).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((res, rej) => A.decodeAudioData(b, res, rej)))
-      .then(buf => { (SFX.buf[name] = SFX.buf[name] || []).push(buf); }).catch(() => { });
+      .then(buf => { (SFX.buf[name] = SFX.buf[name] || []).push(buf);
+        if (name.endsWith('_smash')) { const r = A.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+          for (let c = 0; c < buf.numberOfChannels; c++) { const src = buf.getChannelData(c), dst = r.getChannelData(c); for (let i = 0; i < src.length; i++) dst[i] = src[src.length - 1 - i]; }
+          (SFX.buf[name + '_rev'] = SFX.buf[name + '_rev'] || []).push(r); } }).catch(() => { });
   }
 }
 function play(name, { gain = 1, rate = 1, pan = 0, verb = .5, delay = 0 } = {}) {
@@ -954,7 +974,8 @@ const crumbs = (() => {
         if (c.y < floor) { c.y = floor; if (c.vy < -.4) { c.vy *= -.3; c.vx *= .5; c.vz *= .5; } else { c.rx = rand(-.3, .3); c.rz = rand(-.3, .3); live.splice(i, 1); } }
         place(c); }
       im.instanceMatrix.needsUpdate = true; },
-    reset() { live.length = 0; next = 0; used = 0; im.count = 0; im.instanceMatrix.needsUpdate = true; },
+    reset() { live.length = 0; next = 0; used = 0; im.count = 0; im.instanceMatrix.needsUpdate = true; mat.opacity = 1; mat.transparent = false; mat.needsUpdate = true; },
+    fade(a) { if (!mat.transparent) { mat.transparent = true; mat.needsUpdate = true; } mat.opacity = a; },
   };
 })();
 /* rings */
@@ -1010,7 +1031,7 @@ function hammerUpdate(rdt) {
   if (HAM.touch) { HAM.hideT -= rdt; HAM.vis = clamp(HAM.hideT / .35, 0, 1); }
   hammer.visible = HAM.vis > .01;
   hammer.traverse(m => { if (m.material && m !== aim) m.material.opacity = HAM.vis; });
-  aim.visible = !HAM.touch && HAM.vis > .5;
+  aim.visible = !HAM.touch && HAM.vis > .9;
   if (aim.visible) { aim.position.copy(HAM.point).addScaledVector(HAM.normal, .0006); aim.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), HAM.normal); }
 }
 
@@ -1063,8 +1084,6 @@ function stepShard(s, dt) {
     if (s.bounces < 5) {
       const g = clamp(hitV / 3.4, .04, .7) * (s.bounces === 1 ? 1 : .5) * clamp(Math.sqrt(s.area / 4e-4), .35, 1);
       play(s.obj.glass ? 'glass_land' : 'ceramic_land', { gain: g * .75, rate: clamp(Math.pow(1.5e-3 / s.area, .06), .9, 1.15) * s.obj.def.pitch * rand(.96, 1.04), pan: panX(m.position.x), verb: .4 });
-      if (s.bounces === 1 && s.area > 1.2e-3) body(g * .25, 160, 70, .08);
-      if (!s.obj.glass && hitV > 2.2 && Math.random() < .4) puff(m.position.x, m.position.y, m.position.z, .5);
     }
   }
   s.cool -= dt;
@@ -1121,13 +1140,10 @@ function juice(freeze, smin, sdur, sh) { freezeT = Math.max(freezeT, freeze); if
 function puff(x, y, z, n = 1) { for (let i = 0; i < 3 * n; i++) addP({ k: 1, x: x + rand(-.01, .01), y: y + rand(0, .01), z: z + rand(-.01, .01), vx: rand(-.08, .08), vy: rand(.02, .12), vz: rand(-.08, .08), s: rand(.012, .026), a: rand(.12, .22), life: 0, max: rand(.9, 1.6), c: colorV(pick(['#cfc6b8', '#ddd6ca', '#c4baaa'])) }); }
 function burst(p, def, power, glassy) {
   flash.position.set(p.x, p.y + .03, p.z); flash.intensity = 2.2 * power;
-  addRing(p.x, .0015, p.z, def.pal[1], .26 * power, .8);
-  addRing(p.x, p.y, p.z, def.pal[0], .12 * power, .45, .93, false);
   const nm = Math.round((glassy ? 160 : 110) * power);
   for (let i = 0; i < nm; i++) { const a = rand(TAU), el = rand(-.3, 1.2), sp = rand(.25, 1.6) * power;
     addP({ k: 0, x: p.x, y: p.y, z: p.z, vx: Math.cos(a) * Math.cos(el) * sp, vy: Math.sin(el) * sp * .7, vz: Math.sin(a) * Math.cos(el) * sp, sw: rand(-3, 3), s: rand(.0025, .007), life: 0, max: rand(1.1, 2.6), c: colorV(pick(def.pal)), ph: rand(TAU) }); }
   if (glassy) for (let i = 0; i < 26 * power; i++) addP({ k: 2, x: p.x + rand(-.07, .07), y: p.y + rand(-.04, .08), z: p.z + rand(-.07, .07), vx: 0, vy: 0, vz: 0, s: rand(.012, .03), life: -rand(0, .5), max: rand(.4, .9), c: [1, 1, 1] });
-  else puff(p.x, Math.max(.005, p.y * .3), p.z, 3 * power);
   const nc = Math.round((glassy ? 44 : 32) * power);
   for (let i = 0; i < nc; i++) { const a = rand(TAU), sp = rand(.2, 1.3); crumbs.add(p.x, p.y, p.z, Math.cos(a) * sp, rand(.4, 2.2), Math.sin(a) * sp, rand(.0008, .0022), glassy ? pick([def.pal[0], def.pal[2], def.pal[3]]) : pick(def.pal.concat([def.edgeCol, def.edgeCol]))); }
 }
@@ -1176,8 +1192,8 @@ function smash(o, hitWorld) {
   burst(hitWorld, o.def, o.def.flat ? 1 : 1.1, glassy);
   juice(.07, .28, .55, .006);
   const pan = panX(hitWorld.x);
-  if (glassy) { play('glass_smash', { gain: .95, rate: rand(.9, 1.0) * Math.min(1, o.def.pitch), pan, verb: .7 }); body(.45, 150, 55, .16); }
-  else { play('ceramic_smash', { gain: 1, rate: rand(.88, .98) * Math.min(1, o.def.pitch), pan, verb: .55 }); play('crunch', { gain: .3, rate: rand(.85, .95), pan, verb: .25 }); body(.7, 125, 42, .22); }
+  if (glassy) { play('glass_smash', { gain: 1.15, rate: rand(.9, 1.0) * Math.min(1, o.def.pitch), pan, verb: .7 }); }
+  else { play('ceramic_smash', { gain: 1.1, rate: rand(.88, .98) * Math.min(1, o.def.pitch), pan, verb: .55 }); play('crunch', { gain: .18, rate: rand(.9, 1), pan, verb: .25 }); }
   for (const n of objs) { if (n === o || n.broken) continue; const d = Math.hypot(n.x - o.x, n.z - o.z); if (d < .38) { n.wobV.x += (n.x - o.x) / d * (1 - d / .38) * 1.4; n.wobV.y += (n.z - o.z) / d * (1 - d / .38) * 1.4;
     if (d < .26) play(n.glass ? 'glass_land' : 'ceramic_land', { gain: .2 * (1 - d / .26), rate: n.def.pitch * rand(.97, 1.03), pan: panX(n.x), delay: rand(.03, .09), verb: .3 }); } }
   if (navigator.vibrate) try { navigator.vibrate(glassy ? [12, 24, 8] : 26); } catch (e) { }
@@ -1248,19 +1264,84 @@ function strike(hit) {
     for (const s of statics.slice()) { const d = s.mesh.position.distanceTo(p); if (d < .07 && Math.random() < .7) { wake(s); s.v.set((s.mesh.position.x - p.x) * 6, rand(.3, .9) * (1 - d / .07), (s.mesh.position.z - p.z) * 6); s.w.set(rand(-6, 6), rand(-6, 6), rand(-6, 6)); s.bounces = 1; } }
     const glassy = mats.has(true) && !mats.has(false);
     flash.position.set(p.x, p.y + .03, p.z); flash.intensity = 1;
-    addRing(p.x, .0015, p.z, def.pal[0], .1, .5);
     for (let i = 0; i < 40; i++) { const a = rand(TAU), sp = rand(.15, .7); addP({ k: 0, x: p.x, y: p.y + .004, z: p.z, vx: Math.cos(a) * sp, vy: rand(.05, .5), vz: Math.sin(a) * sp, sw: rand(-3, 3), s: rand(.002, .005), life: 0, max: rand(.7, 1.6), c: colorV(pick(def.pal)), ph: rand(TAU) }); }
     for (let i = 0; i < 10; i++) { const a = rand(TAU), sp = rand(.1, .6); crumbs.add(p.x, p.y + .003, p.z, Math.cos(a) * sp, rand(.4, 1.3), Math.sin(a) * sp, rand(.0007, .0016), pick(def.pal.concat([def.edgeCol]))); }
     if (glassy) for (let i = 0; i < 8; i++) addP({ k: 2, x: p.x + rand(-.03, .03), y: p.y + rand(0, .03), z: p.z + rand(-.03, .03), vx: 0, vy: 0, vz: 0, s: rand(.01, .022), life: -rand(0, .3), max: rand(.35, .7), c: [1, 1, 1] });
-    else puff(p.x, p.y, p.z, 1);
     juice(.035, .55, .25, .0025);
-    if (glassy) { play('glass_smash', { gain: .4, rate: rand(1.05, 1.15), pan: panX(p.x), verb: .5 }); play('glass_land', { gain: .4, rate: rand(.97, 1.05), pan: panX(p.x), delay: .03 }); body(.25, 170, 70, .1); }
-    else { play('crunch', { gain: .75, rate: rand(.92, 1.02), pan: panX(p.x), verb: .3 }); play('ceramic_land', { gain: .35, rate: rand(.97, 1.05), pan: panX(p.x), delay: .025 }); body(.4, 140, 55, .14); }
+    if (glassy) { play('glass_smash', { gain: .4, rate: rand(1.05, 1.15), pan: panX(p.x), verb: .5 }); play('glass_land', { gain: .4, rate: rand(.97, 1.05), pan: panX(p.x), delay: .03 }); }
+    else { play('crunch', { gain: .75, rate: rand(.92, 1.02), pan: panX(p.x), verb: .3 }); play('ceramic_land', { gain: .35, rate: rand(.97, 1.05), pan: panX(p.x), delay: .025 }); }
     if (navigator.vibrate) try { navigator.vibrate(10); } catch (e) { }
     return;
   }
-  addRing(p.x, .0015, p.z, '#b9b1a6', .09, .55); puff(p.x, .003, p.z, .8); juice(.02, 1, 0, .0015);
-  play('thud', { gain: .7, rate: rand(.9, 1.0), pan: panX(p.x), verb: .2 }); body(.45, 110, 45, .16);
+  play('thud', { gain: .45, rate: rand(.9, 1.0), pan: panX(p.x), verb: .2 });
+}
+
+/* --------------------------------------------------------------- rewind */
+// every piece lifts, turns and flies home along an arc, and the object closes up whole
+let reform = null;
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function startReform() {
+  if (reform) return;
+  const broken = objs.filter(o => o.broken);
+  if (!broken.length && !shards.length) { buildObjects(); return; }
+  HAM.pending = null;
+  for (const o of objs) { if (o.staticMesh) { root.remove(o.staticMesh); o.staticMesh.geometry.dispose(); o.staticMesh = null; } o.staticDirty = false; }
+  statics.length = 0;
+  const order = broken.slice().sort((a, b) => a.x - b.x);
+  const list = [];
+  for (const s of shards) {
+    const o = s.obj, m = s.mesh, oi = Math.max(0, order.indexOf(o));
+    m.visible = true; s.asleep = true;
+    const to = o.group.position.clone().setY(0).add(s.com.clone().applyQuaternion(o.group.quaternion));
+    const from = m.position.clone(), mid = from.clone().lerp(to, .5);
+    mid.y = Math.max(from.y, to.y) + .1 + rand(.03, .14) + o.def.H * .3;
+    mid.x += rand(-.05, .05); mid.z += rand(-.05, .05);
+    const dist = from.distanceTo(to);
+    s.rf = { from, mid, to, q0: m.quaternion.clone(), q1: o.group.quaternion.clone(), axis: new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(), spin: rand(2, 7) * (Math.random() < .5 ? -1 : 1),
+      delay: oi * .09 + clamp(dist * 1.2, 0, .5) * rand(.3, 1) + rand(0, .25), dur: rand(1.05, 1.45) + dist * .6, done: false };
+    list.push(s);
+  }
+  const byObj = new Map(); for (const s of list) { const a = byObj.get(s.obj) || []; a.push(s); byObj.set(s.obj, a); }
+  reform = { t: 0, list, byObj, left: new Set(byObj.keys()), crumbA: 1 };
+  for (const o of broken) { o.group.position.y = 0; o.group.rotation.set(0, o.group.rotation.y, 0); }
+  HF.h.fill(0);
+}
+function stepReform(rdt) {
+  if (!reform) return;
+  const R = reform; R.t += rdt;
+  R.crumbA = Math.max(0, R.crumbA - rdt * .9); crumbs.fade(R.crumbA);
+  const tmpQ = new THREE.Quaternion(), spinQ = new THREE.Quaternion();
+  for (const s of R.list) {
+    const f = s.rf; if (f.done) continue;
+    const u = clamp((R.t - f.delay) / f.dur, 0, 1); if (u <= 0) continue;
+    const e = easeIO(u), a = 1 - e;
+    // quadratic arc home
+    s.mesh.position.set(a * a * f.from.x + 2 * a * e * f.mid.x + e * e * f.to.x, a * a * f.from.y + 2 * a * e * f.mid.y + e * e * f.to.y, a * a * f.from.z + 2 * a * e * f.mid.z + e * e * f.to.z);
+    tmpQ.copy(f.q0).slerp(f.q1, e); spinQ.setFromAxisAngle(f.axis, f.spin * Math.pow(a, 1.5)); s.mesh.quaternion.copy(spinQ).multiply(tmpQ);
+    if (Math.random() < .08 * (1 - Math.abs(u - .5) * 2) + .01) addP({ k: 0, x: s.mesh.position.x, y: s.mesh.position.y, z: s.mesh.position.z, vx: rand(-.05, .05), vy: rand(.02, .1), vz: rand(-.05, .05), sw: rand(-2, 2), s: rand(.002, .005), life: 0, max: rand(.6, 1.2), c: colorV(pick(s.obj.def.pal)), ph: rand(TAU) });
+    if (u >= 1) { f.done = true; s.mesh.position.copy(f.to); s.mesh.quaternion.copy(f.q1);
+      if (Math.random() < .35) play(s.obj.glass ? 'glass_land' : 'ceramic_land', { gain: .12, rate: rand(1.15, 1.35) * s.obj.def.pitch, pan: panX(f.to.x), verb: .6 }); }
+  }
+  // as each object closes, it becomes whole again with a breath of light
+  for (const o of [...R.left]) {
+    const mine = R.byObj.get(o);
+    const last = Math.max(...mine.map(s => s.rf.delay + s.rf.dur));
+    if (!o.rfSound && R.t > last - .95) { o.rfSound = true; play(o.glass ? 'glass_smash_rev' : 'ceramic_smash_rev', { gain: .55, rate: rand(.95, 1.02), pan: panX(o.x), verb: .8 }); }
+    if (mine.every(s => s.rf.done)) {
+      R.left.delete(o); o.rfSound = false;
+      for (const s of mine) { root.remove(s.mesh); s.mesh.geometry.dispose(); }
+      if (o.broken) { o.broken = false; root.add(o.group); o.wob.set(0, 0); o.wobV.set(rand(-1, 1) * .6, rand(-1, 1) * .6); }
+      const c = new THREE.Vector3(o.x, o.def.H * .5 + .01, o.z);
+      flash.position.copy(c); flash.intensity = 1.2;
+      for (let i = 0; i < 70; i++) { const a = rand(TAU), r = o.def.R * rand(.6, 1.3); addP({ k: 0, x: o.x + Math.cos(a) * r, y: rand(0, o.def.H + .01), z: o.z + Math.sin(a) * r, vx: -Math.cos(a) * .05, vy: rand(.05, .25), vz: -Math.sin(a) * .05, sw: rand(-3, 3), s: rand(.002, .0055), life: 0, max: rand(.8, 1.8), c: colorV(pick(o.def.pal)), ph: rand(TAU) }); }
+      for (let i = 0; i < 14; i++) addP({ k: 2, x: o.x + rand(-o.def.R, o.def.R), y: rand(.005, o.def.H + .01), z: o.z + rand(-o.def.R, o.def.R) * .5, vx: 0, vy: 0, vz: 0, s: rand(.01, .024), life: -rand(0, .4), max: rand(.4, .9), c: [1, 1, 1] });
+      play(o.glass ? 'glass_land' : 'ceramic_land', { gain: .35, rate: o.def.pitch * .9, pan: panX(o.x), verb: .7 });
+    }
+  }
+  if (!R.left.size) {
+    shards = shards.filter(s => !R.list.includes(s)); reform = null; crumbs.reset();
+    HF.h.fill(0); for (const o of objs) if (o.def.flat && !o.broken) hfRaster(o.wtris);
+  }
 }
 
 /* ------------------------------------------------------------------- loop */
@@ -1278,17 +1359,24 @@ function frame(now) {
   const sub = dt > 0 ? Math.max(1, Math.ceil(dt / (1 / 240))) : 0, h = dt / Math.max(1, sub);
   for (let k = 0; k < sub; k++) for (let i = shards.length - 1; i >= 0; i--) { const s = shards[i]; if (s.asleep) continue; if (stepShard(s, h)) settle(s); }
   for (const o of objs) if (o.staticDirty) { o.staticT = (o.staticT || 0) + rdt; const moving = shards.some(s => !s.asleep && s.obj === o); if (o.staticT > .35 || !moving) rebuildStatic(o); }
+  stepReform(rdt);
   crumbs.step(dt); stepParticles(dt, rdt); stepRings(dt);
   if (flash.intensity > 0) flash.intensity = Math.max(0, flash.intensity * Math.exp(-rdt * 18) - .01);
   glintT -= rdt;
   if (glintT < 0 && statics.length) { glintT = rand(.08, .25);
     for (let k = 0; k < 6; k++) { const s = pick(statics); if (s.obj.glass || Math.random() < .1) { const b = s.wbox; addP({ k: 2, x: rand(b.min.x, b.max.x), y: b.max.y + .001, z: rand(b.min.z, b.max.z), vx: 0, vy: 0, vz: 0, s: rand(.008, .02), life: 0, max: rand(.5, 1.1), c: [1, 1, 1] }); break; } } }
+  scene.environmentRotation.y = Math.sin(now * .00011) * .35;
   const kv = 1 - Math.exp(-rdt * 14);
   VIEW.az += (VIEW.tAz - VIEW.az) * kv; VIEW.el += (VIEW.tEl - VIEW.el) * kv; VIEW.dist += (VIEW.tDist - VIEW.dist) * kv;
   placeCamera(VIEW.az, VIEW.el, VIEW.dist);
   shake *= Math.exp(-rdt * 12);
   if (shake > 1e-5) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(shake));
-  if (hoverXY && !HAM.touch && HAM.t > .12) { const h = pickAt(hoverXY[0], hoverXY[1]); if (h) { HAM.point.copy(h.point); HAM.normal.copy(h.normal); } }
+  // while the view is turning the table slides under a still pointer: rest the hammer, aim again once it settles
+  const turning = now - (VIEW.lastOrbit || -1e9) < 220 || Math.abs(VIEW.tAz - VIEW.az) + Math.abs(VIEW.tEl - VIEW.el) + Math.abs(VIEW.tDist - VIEW.dist) / VIEW.fit > .004;
+  if (!HAM.touch) {
+    if (hoverXY && !turning) { if (HAM.t > .12) { const h = pickAt(hoverXY[0], hoverXY[1]); if (h) { HAM.point.copy(h.point); HAM.normal.copy(h.normal); } } HAM.vis = Math.min(1, HAM.vis + rdt * 8); }
+    else HAM.vis = Math.max(0, HAM.vis - rdt * 10);
+  }
   hammerUpdate(rdt);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -1300,12 +1388,11 @@ let hoverXY = null;
 const cv = renderer.domElement, touches = new Map();
 let tapTimer = null, tapAt = null, gesture = null, rdrag = null;
 function swingAt(x, y, touch) {
-  audioInit();
+  audioInit(); if (reform) return;
   const hit = pickAt(x, y); if (!hit) return;
   if (HAM.pending) strike(HAM.pending);
   HAM.touch = touch; HAM.point.copy(hit.point); HAM.normal.copy(hit.normal);
   HAM.vis = 1; HAM.hideT = 1.1; HAM.k0 = Math.max(0, Math.min(1, HAM.k ?? 1)); HAM.t = 0; HAM.pending = hit;
-  play('swing', { gain: .16, rate: rand(1.0, 1.1), verb: 0 });
 }
 function gestureState() { const p = [...touches.values()]; return { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) }; }
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -1326,7 +1413,7 @@ cv.addEventListener('pointerdown', e => {
 addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') {
     if (rdrag) { orbit(-(e.clientX - rdrag.x) * .006, (e.clientY - rdrag.y) * .005); rdrag = { x: e.clientX, y: e.clientY }; return; }
-    HAM.touch = false; if (e.target !== cv) { HAM.vis = 0; hoverXY = null; return; } hoverXY = [e.clientX, e.clientY]; HAM.vis = 1; return;
+    HAM.touch = false; if (e.target !== cv) { hoverXY = null; return; } hoverXY = [e.clientX, e.clientY]; return;
   }
   if (!touches.has(e.pointerId)) return;
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1347,9 +1434,10 @@ addEventListener('resize', () => {
   if ((tall ? 'tall' : 'wide') !== layoutKey && !objs.some(o => o.broken)) buildObjects(); else fitCamera(false);
 });
 document.getElementById('sound').addEventListener('click', e => { SFX.on = !SFX.on; e.currentTarget.setAttribute('aria-pressed', SFX.on); audioInit(); });
-document.getElementById('reset').addEventListener('click', () => { buildObjects(); });
+document.getElementById('reset').addEventListener('click', () => startReform());
 window.__smash = { pickAt, strike, state: () => ({ objs: objs.map(o => [o.kind, o.broken]), shards: shards.length, statics: statics.length, flying: shards.filter(s => !s.asleep).length }),
   shardScreen: () => { const s = pick(shards); if (!s) return null; const v = s.mesh.position.clone().project(camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; },
+  reform: () => startReform(), reforming: () => !!reform,
   screen: kind => { const o = objs.find(q => q.kind === kind && !q.broken); if (!o) return null; const v = new THREE.Vector3(o.x, o.def.flat ? .015 : o.H * .55, o.z).project(camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; } };
 buildObjects();
 requestAnimationFrame(frame);
