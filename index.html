@@ -232,10 +232,11 @@ function renderRoll(dt){
   viewer.classList.toggle('moving', Math.abs(goal-pos)>.03 || !!swipe);
   for(let i=0;i<NS;i++){
     const el=slides[i].el, off=wrapOff(i-pos), a=Math.abs(off), sg=Math.sign(off);
-    const x = sg*(a<1 ? a*spacing*1.2 : spacing*1.2 + (a-1)*spacing*.62);
-    const rot = -clamp(off,-1,1)*46;
-    const z = -Math.min(a,1)*slideW*.42 - Math.max(0,a-1)*slideW*.18;
-    el.style.transform=`translate3d(${x.toFixed(2)}px,0,${z.toFixed(2)}px) rotateY(${rot.toFixed(2)}deg)`;
+    // flat row: side photos face forward, a little smaller, with a clear gap between each
+    const sc = 1 - Math.min(a,2)*.14, gapPx = 18;
+    const step1 = slideW*(.5+.43) + gapPx, step2 = slideW*(.43+.36) + gapPx;
+    const x = sg*(a<1 ? a*step1 : step1 + (a-1)*step2);
+    el.style.transform=`translate3d(${x.toFixed(2)}px,0,0) scale(${sc.toFixed(4)})`;
     el.style.zIndex=String(100-Math.round(a*10));
     el.style.setProperty('--shade', Math.min(a*.32,.62).toFixed(3));
     el.style.opacity = a>2.4 ? Math.max(0,1-(a-2.4)*2.5).toFixed(3) : '1';
