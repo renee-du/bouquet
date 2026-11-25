@@ -5,46 +5,26 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="description" content="A still life of porcelain, stoneware and coloured glass to break with a hammer, piece by piece.">
 <title>Still Life, Broken</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
 :root{--ink:#1d1b1a;--muted:#8d8780;--paper:#ffffff;--display:"Instrument Serif","Iowan Old Style",Georgia,serif;--ui:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
 html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 body{font-family:var(--ui);color:var(--ink);-webkit-font-smoothing:antialiased}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:none}
-.ui{position:fixed;z-index:2;pointer-events:none}
-.title{top:max(22px,env(safe-area-inset-top));left:28px}
-.title h1{margin:0;font:400 30px/1 var(--display);letter-spacing:-.01em}
-.title h1 i{color:#6b6560}
-.title p{margin:7px 0 0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.tools{top:max(22px,env(safe-area-inset-top));right:22px;display:flex;gap:4px;pointer-events:auto}
-.tools button{font:500 11px/1 var(--ui);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:rgba(255,255,255,.72);border:0;padding:10px 12px;border-radius:999px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .2s,color .2s}
-.tools button:hover{background:#f3f1ee}
+.ui{position:fixed;z-index:2}
+.tools{top:calc(env(safe-area-inset-top,0px) + 14px);right:calc(env(safe-area-inset-right,0px) + 14px);display:flex;gap:2px}
+.tools button{width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.7);color:#b3ada6;cursor:pointer;padding:0;transition:color .2s,background .2s}
+.tools button:hover{color:#3a3633;background:#f4f2ef}
 .tools button:focus-visible{outline:2px solid #22409b;outline-offset:2px}
-.tools button[aria-pressed="false"]{color:var(--muted)}
-.hint{left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translateX(-50%);font:italic 400 19px/1.2 var(--display);color:#77716b;text-align:center;transition:opacity 1.2s ease;white-space:nowrap}
-.count{right:28px;bottom:max(24px,env(safe-area-inset-bottom));font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums;transition:opacity .6s}
-.count b{font:400 22px/1 var(--display);letter-spacing:0;color:var(--ink);margin-right:6px;vertical-align:-2px}
-@media (max-width:640px){
-  .title{left:18px}.title h1{font-size:25px}.title p{font-size:10px}
-  .tools{right:12px;top:auto;bottom:max(14px,env(safe-area-inset-bottom))}
-  .tools button{padding:9px 10px;font-size:10px}
-  .hint{bottom:auto;top:calc(max(22px,env(safe-area-inset-top)) + 58px);left:18px;transform:none;font-size:16px}
-  .count{right:auto;left:18px;bottom:max(18px,env(safe-area-inset-bottom))}
-}
+.tools svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tools button[aria-pressed="false"] .on,.tools button[aria-pressed="true"] .off{display:none}
 </style>
 </head>
 <body>
 <canvas id="c" aria-label="A still life of plates, bowls, a mug, a vase, a bottle and glasses. Click or tap to break them." role="img"></canvas>
-<div class="ui title"><h1>Still life, <i>broken</i></h1><p>Porcelain · stoneware · glass</p></div>
 <div class="ui tools">
-  <button id="sound" aria-pressed="true">Sound</button>
-  <button id="keep">Keep</button>
-  <button id="reset">New table</button>
+  <button id="sound" aria-pressed="true" aria-label="Sound" title="Sound"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="on" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
+  <button id="reset" aria-label="Set a new table" title="Set a new table"><svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg></button>
 </div>
-<div class="ui hint" id="hint">Click to break. Click the pieces to break them smaller.</div>
-<div class="ui count" id="count" style="opacity:0"><b id="n">0</b> pieces</div>
 <script>
 'use strict';
 /* =========================================================================
@@ -871,7 +851,7 @@ function computeLayout() {
   const L = LAYOUTS[tall ? 'tall' : 'wide'];
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   L.items.forEach(([k, x, y]) => { const [hw, up, dn] = dims(k); x0 = Math.min(x0, x - hw); x1 = Math.max(x1, x + hw); y0 = Math.min(y0, y - up); y1 = Math.max(y1, y + dn); });
-  const top = tall ? 128 : 96, bottom = tall ? 64 : 70, side = tall ? 14 : 40;
+  const top = tall ? 70 : 64, bottom = tall ? 40 : 48, side = tall ? 14 : 40;
   S = Math.min((W - side * 2) / (x1 - x0), (H - top - bottom) / (y1 - y0), 1.35);
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   const tx = W / 2 - cx * S, ty = top + (H - top - bottom) / 2 - cy * S;
@@ -1120,7 +1100,7 @@ function redrawGround() {
   for (const s of rest) gctx.drawImage(s.comp, s.compX, s.compY, s.comp.width / P, s.comp.height / P);
   groundDirty = false;
 }
-function bounds() { return { x0: -offX + 8, x1: W - offX - 8, y0: -offY + 70, y1: H - offY - 8 }; }
+function bounds() { return { x0: -offX + 8, x1: W - offX - 8, y0: -offY + 12, y1: H - offY - 8 }; }
 const GRAV = () => 2300 * S;
 function stepShard(s, dt) {
   s.age += dt;
@@ -1492,9 +1472,8 @@ function strike(x, y) {
 }
 
 /* ------------------------------------------------------------ main loop */
-const elCount = document.getElementById('count'), elN = document.getElementById('n'), elHint = document.getElementById('hint');
 let lastCount = -1, smashes = 0, glintT = 0;
-function noteSmash() { smashes++; if (smashes === 2) elHint.style.opacity = 0; elCount.style.opacity = 1; }
+function noteSmash() { smashes++; }
 function resize() {
   const nw = innerWidth, nh = innerHeight;
   P = Math.min(2, window.devicePixelRatio || 1);
@@ -1540,9 +1519,7 @@ function frame(now) {
   shakeA *= Math.exp(-rdt * 14); zoomA *= Math.exp(-rdt * 9);
   if (groundDirty) redrawGround();
   render(ctx, true);
-  const cnt = fly.length + rest.length;
-  if (cnt !== lastCount) { lastCount = cnt; elN.textContent = cnt.toLocaleString(); }
-  requestAnimationFrame(frame);
+    requestAnimationFrame(frame);
 }
 function render(g, live) {
   g.setTransform(1, 0, 0, 1, 0, 0);
@@ -1601,16 +1578,9 @@ addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout
 document.getElementById('sound').addEventListener('click', e => { AU.on = !AU.on; e.currentTarget.setAttribute('aria-pressed', AU.on); auInit(); });
 document.getElementById('reset').addEventListener('click', () => {
   anySmash = false; smashes = 0; fly = []; rest = []; crumbs = []; parts = [];
-  buildObjects(true); groundDirty = true; elCount.style.opacity = 0; elHint.style.opacity = 1;
-});
-document.getElementById('keep').addEventListener('click', () => {
-  const c = mk(W * P, H * P), g = c.getContext('2d');
-  if (groundDirty) redrawGround();
-  render(g, false);
-  c.toBlob(b => { if (!b) return; const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'still-life-broken.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/png');
+  buildObjects(true); groundDirty = true;
 });
 window.__smash = { strike: (x, y) => strike(x, y), state: () => ({ objs: objs.map(o => [o.kind, Math.round(o.x), Math.round(o.y), o.broken]), fly: fly.length, rest: rest.length, S }) };
-if (matchMedia('(hover: none)').matches) elHint.textContent = 'Tap to break. Tap the pieces to break them smaller.';
 resize();
 requestAnimationFrame(frame);
 </script>
