@@ -90,7 +90,7 @@ button{font:inherit;color:inherit}
 @keyframes sweep{from{background-position:120% 0}to{background-position:-30% 0}}
 
 @media (max-width:820px){
-  .app{grid-template-columns:1fr;grid-template-rows:minmax(0,54%) minmax(0,46%)}
+  .app{grid-template-columns:1fr;grid-template-rows:minmax(0,50%) minmax(0,50%)}
   .stage{order:1}
   .roll{order:2;border-right:0;border-top:1px solid var(--line);padding-block:10px calc(10px + env(safe-area-inset-bottom,0px))}
   .toolbar{bottom:14px}
@@ -192,7 +192,7 @@ function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.de
 /* ================= camera roll: coverflow ring ================= */
 const viewer=$('viewer'), track=$('track');
 const NS = PHOTOS.length;
-let cur=0, pos=0, vel=0, goal=0, slideW=300, slideH=400, spacing=200, wheelT=0;
+let slideGap=18, cur=0, pos=0, vel=0, goal=0, slideW=300, slideH=400, spacing=200, wheelT=0;
 const slides=[];
 const wrapOff = d => { d=((d%NS)+NS)%NS; return d>NS/2 ? d-NS : d; };
 PHOTOS.forEach((p,i)=>{
@@ -214,7 +214,8 @@ PHOTOS.forEach((p,i)=>{
 });
 function layoutRoll(){
   const vw=viewer.clientWidth, vh=viewer.clientHeight;
-  slideH = Math.min(vh-90, vw*.6/.75); slideW = slideH*.75; spacing = slideW*.8;
+  const phone = innerWidth<=820; slideGap = phone ? 12 : 18;
+  slideH = phone ? Math.min(vh-62, vw*.7/.75) : Math.min(vh-90, vw*.6/.75); slideW = slideH*.75; spacing = slideW*.8;
   const top = Math.max(8,(vh - slideH - 64)/2);
   $('thumbs').style.top = (viewer.offsetTop + top + slideH + 14)+'px';
   slides.forEach(s=>{ s.el.style.width=slideW+'px'; s.el.style.height=slideH+'px'; s.el.style.marginLeft=(-slideW/2)+'px'; s.el.style.marginTop=(top - vh/2)+'px'; });
@@ -233,7 +234,7 @@ function renderRoll(dt){
   for(let i=0;i<NS;i++){
     const el=slides[i].el, off=wrapOff(i-pos), a=Math.abs(off), sg=Math.sign(off);
     // flat row: side photos face forward, a little smaller, with a clear gap between each
-    const x = off*(slideW + 18);
+    const x = off*(slideW + slideGap);
     el.style.transform=`translate3d(${x.toFixed(2)}px,0,0)`;
     el.style.zIndex=String(100-Math.round(a*10));
     el.style.setProperty('--shade', Math.min(a*.32,.62).toFixed(3));
