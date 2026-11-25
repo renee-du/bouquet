@@ -259,6 +259,16 @@ function hitFlower(slide, clientX, clientY){
     const v=a.data[(iy*a.w+ix)*4+3];
     if(v>90 && (!best || f.w*f.h < best.w*best.h)) best=f;   // prefer the smaller (front) flower
   }
+  if(best) return best;
+  // forgiving fallback for small or lacy flowers (cherry blossom): a press near the flower still picks it
+  let bestD=Infinity;
+  for(const f of slide.defs){
+    const fx=r.left+f.x/f.W*r.width, fy=r.top+f.y/f.H*r.height, fw=f.w/f.W*r.width, fh=f.h/f.H*r.height;
+    const pad=Math.max(22, 44-Math.min(fw,fh)*.25);
+    if(clientX<fx-pad||clientX>fx+fw+pad||clientY<fy-pad||clientY>fy+fh+pad) continue;
+    const d=Math.hypot(clientX-(fx+f.cx*fw), clientY-(fy+f.cy*fh)) / Math.max(1,Math.sqrt(fw*fh));
+    if(d<bestD){ bestD=d; best=f; }
+  }
   return best;
 }
 function flowerRect(slide, f){
