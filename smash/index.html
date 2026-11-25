@@ -28,7 +28,6 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:none;o
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /* =========================================================================
    Still life, broken — a three.js still life you take a hammer to.
@@ -62,11 +61,26 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff);
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.035).texture;
-scene.environmentIntensity = 0.95;
+// a photo studio: a white sweep, big softboxes and black cards, so glaze and glass have something real to reflect
+function studioEnv() {
+  const s = new THREE.Scene(), W = c => new THREE.Color(c, c, c);
+  s.add(new THREE.Mesh(new THREE.SphereGeometry(9, 48, 24), new THREE.MeshBasicMaterial({ color: W(.55), side: THREE.BackSide })));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ color: W(.95) })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.4; s.add(floor);
+  const panel = (w, h, c, pos) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: W(c), side: THREE.DoubleSide })); m.position.set(...pos); m.lookAt(0, .3, 0); s.add(m); };
+  panel(4.5, 2.6, 7, [-3.2, 4.2, 2.6]);     // key softbox, high left front
+  panel(1.1, 4.2, 4.5, [4.2, 2.2, -.6]);    // strip light, right
+  panel(3.4, 1.1, 2.6, [.4, 5.2, -3.4]);    // top back
+  panel(2.2, 1.4, 2, [1.5, 1.6, 4.4]);      // small front fill
+  panel(2.6, 4.2, .015, [-4.6, 1.8, -1.2]); // black card, left
+  panel(2.2, 4.2, .015, [2.6, 1.6, 3.8]);   // black card, right front
+  panel(5, 1.6, .03, [0, 1.2, -5.2]);       // dark band behind
+  return pmrem.fromScene(s, .012).texture;
+}
+scene.environment = studioEnv();
+scene.environmentIntensity = 1;
 
 const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.05, 30);
-const key = new THREE.DirectionalLight(0xfff6ec, 2.1);
+const key = new THREE.DirectionalLight(0xfff4e8, 2.5);
 key.position.set(-1.1, 2.4, 1.2);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -77,7 +91,7 @@ scene.add(key, key.target);
 const rim = new THREE.DirectionalLight(0xeef3ff, 0.55); rim.position.set(1.6, 1.2, -1.5); scene.add(rim);
 const flash = new THREE.PointLight(0xfff4e6, 0, 0.9, 2); scene.add(flash);
 
-const table = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.2, color: 0x2a2018 }));
+const table = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.24, color: 0x2a2018 }));
 table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
 
 /* ------------------------------------------------- botanical ink painting */
@@ -370,15 +384,15 @@ const peel = canvasTex(noiseNormal(), false, 6);
 const glazeN = { normalMap: peel, normalScale: new THREE.Vector2(.05, .05) };
 function porcelain(opts = {}) { return new THREE.MeshPhysicalMaterial(Object.assign({ color: 0xf7f7f3, roughness: .2, clearcoat: 1, clearcoatRoughness: .07, ior: 1.52, specularIntensity: .7 }, glazeN, opts)); }
 function biscuit(col) { return new THREE.MeshStandardMaterial({ color: col, roughness: .94, metalness: 0 }); }
-function glass(tint, dist, rough = .015) {
-  const edge = new THREE.Color(tint).multiplyScalar(.55);
-  const m = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(tint).lerp(new THREE.Color(0xffffff), .55), transmission: 1, thickness: .008, roughness: rough, ior: 1.52,
-    attenuationColor: new THREE.Color(tint), attenuationDistance: dist, specularIntensity: 1, specularColor: 0xffffff, envMapIntensity: 2.6, side: THREE.FrontSide });
-  // glass is pale where you look straight through it and deep where you look along it
+function glass(tint, dist, thick = .008) {
+  const deep = new THREE.Color(tint).multiplyScalar(.7);
+  const m = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(tint).lerp(new THREE.Color(0xffffff), .8), transmission: 1, thickness: thick, roughness: 0, ior: 1.5, dispersion: .4,
+    attenuationColor: new THREE.Color(tint), attenuationDistance: dist, specularIntensity: 1, specularColor: 0xffffff, envMapIntensity: 1.5 });
+  // looking along a wall you look through more glass: let the edges carry the colour
   m.onBeforeCompile = sh => {
-    sh.uniforms.uEdge = { value: edge };
-    sh.fragmentShader = 'uniform vec3 uEdge;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
-      'float fr = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 1.6);\n gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * uEdge * 1.15, clamp(fr * .85, 0., .85));\n#include <dithering_fragment>');
+    sh.uniforms.uDeep = { value: deep };
+    sh.fragmentShader = 'uniform vec3 uDeep;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
+      'float fr = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.2);\n gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * uDeep, clamp(fr * .6, 0., .6));\n#include <dithering_fragment>');
   };
   return m;
 }
@@ -665,28 +679,28 @@ function makeKinds() {
     const sc = .001, t = .0028, H = .25;
     const wall = [[0, 30], [8, 31.5], [40, 30.5], [70, 33.5], [104, 27], [146, 31.5], [172, 27], [200, 16], [224, 11.5], [234, 12], [238, 13.4], [244, 12.8], [250, 11.8]];
     const pts = vessel(wall, t, sc, { bottomT: .008 });
-    const g = glass('#5fae84', .04);
+    const g = glass('#5fae84', .09, .01);
     const fx = (th, y) => { const m = (y > .012 && y < .082) ? Math.sin((y - .012) / .07 * Math.PI) : (y > .138 && y < .196) ? Math.sin((y - .138) / .058 * Math.PI) : 0; return .0009 * m * Math.cos(th * 26); };
-    return { parts: [lathe(pts, { mats: { outer: 0, inner: 0, edge: 0, rim: 0 }, uvO: cylUV(H), uvI: cylUV(H), fx, nu: 160 })], mats: [g], glass: true, R: .034, H, pal: ['#5aa57c', '#a8d9bd', '#2f7353', '#d3efe0'], edgeCol: '#a8d9bd', pitch: .9 };
+    return { parts: [lathe(pts, { mats: { outer: 0, inner: 0, edge: 0, rim: 0 }, uvO: cylUV(H), uvI: cylUV(H), fx, nu: 160 })], mats: [g], glass: true, tint: '#5fae84', R: .034, H, pal: ['#5aa57c', '#a8d9bd', '#2f7353', '#d3efe0'], edgeCol: '#a8d9bd', pitch: .9 };
   };
   const wine = (tint, pal, pitch) => () => {
-    const g = glass(tint, .045);
-    const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, uv = cylUV(.2);
-    const foot = lathe([[0.0006, .0016, .0032], [.03, .0016, .0032], [.0335, .0018, .0026]], { mats: mm, uvO: uv, uvI: uv, smooth: 1 });
-    const stemP = lathe([[.0034, .003, .0068], [.0019, .011, .0038], [.00165, .06, .0033], [.0032, .0685, .0064]], { mats: mm, uvO: uv, uvI: uv, nu: 20, smooth: 1 });
+    const g = glass(tint, .14, .006), gt = glass(tint, .035, .03);
+    const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, mt = { outer: 1, inner: 1, edge: 1, rim: 1 }, uv = cylUV(.2);
+    const foot = lathe([[0.0006, .0016, .0032], [.03, .0016, .0032], [.0335, .0018, .0026]], { mats: mt, uvO: uv, uvI: uv, smooth: 1 });
+    const stemP = lathe([[.0034, .003, .0068], [.0019, .011, .0038], [.00165, .06, .0033], [.0032, .0685, .0064]], { mats: mt, uvO: uv, uvI: uv, nu: 20, smooth: 1 });
     const bowl = lathe([[.0035, .0705, .006], [.012, .0712, .004], [.022, .0742, .0026], [.031, .0792, .0022], [.0365, .087, .0022], [.0385, .1, .0022], [.0395, .14, .0022], [.0408, .205, .0021]], { mats: mm, uvO: uv, uvI: uv });
-    return { parts: [foot, stemP, bowl], mats: [g], glass: true, R: .041, H: .205, pal, pitch, edgeCol: pal[2] };
+    return { parts: [foot, stemP, bowl], mats: [g, gt], glass: true, tint, R: .041, H: .205, pal, pitch, edgeCol: pal[2] };
   };
   K.wineSlate = wine('#7f9ea7', ['#87a6ae', '#45656f', '#d5e4e7', '#a9c2c8'], 1);
   K.wineRose = wine('#d7849f', ['#d98ba3', '#9c4766', '#f6d8e2', '#e8b3c4'], 1.08);
   K.wineAmber = wine('#c9701c', ['#cc7a24', '#7e3f08', '#f2cfa0', '#e3a45c'], .95);
   const tumbler = (tint, pal, pitch) => () => {
-    const g = glass(tint, .03);
-    const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, uv = cylUV(.12);
-    const cap = lathe([[0.0006, .002, .004], [.025, .002, .004]], { mats: mm, uvO: uv, uvI: uv, smooth: 0 });
-    const base = lathe([[.0128, .002, .0256], [.0115, .012, .023], [.0094, .024, .0188], [.0098, .031, .0196]], { mats: mm, uvO: uv, uvI: uv, smooth: 1 });
+    const g = glass(tint, .1, .008), gt = glass(tint, .028, .035);
+    const mm = { outer: 0, inner: 0, edge: 0, rim: 0 }, mt = { outer: 1, inner: 1, edge: 1, rim: 1 }, uv = cylUV(.12);
+    const cap = lathe([[0.0006, .002, .004], [.025, .002, .004]], { mats: mt, uvO: uv, uvI: uv, smooth: 0 });
+    const base = lathe([[.0128, .002, .0256], [.0115, .012, .023], [.0094, .024, .0188], [.0098, .031, .0196]], { mats: mt, uvO: uv, uvI: uv, smooth: 1 });
     const cup = lathe([[.0035, .0325, .007], [.015, .033, .005], [.026, .036, .003], [.035, .044, .0026], [.0395, .058, .0025], [.041, .08, .0025], [.0418, .122, .0024]], { mats: mm, uvO: uv, uvI: uv });
-    return { parts: [cap, base, cup], mats: [g], glass: true, R: .042, H: .122, pal, pitch, edgeCol: pal[2] };
+    return { parts: [cap, base, cup], mats: [g, gt], glass: true, tint, R: .042, H: .122, pal, pitch, edgeCol: pal[2] };
   };
   K.tumblerPink = tumbler('#e59585', ['#e9a093', '#b5524a', '#fbdcd4', '#f2bcb1'], 1.15);
   K.tumblerTeal = tumbler('#2fb0be', ['#3db6c2', '#13707c', '#bdeef2', '#7fd3db'], 1.2);
@@ -748,6 +762,20 @@ let objs = [], shards = [], statics = [], layoutKey = '';
 const root = new THREE.Group(); scene.add(root);
 const contactTex = (() => { const c = mk(128, 128), g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   gr.addColorStop(0, 'rgba(30,22,16,.55)'); gr.addColorStop(.62, 'rgba(30,22,16,.42)'); gr.addColorStop(.72, 'rgba(30,22,16,.16)'); gr.addColorStop(1, 'rgba(30,22,16,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+const causticCache = {};
+function causticTex(tint) {
+  if (causticCache[tint]) return causticCache[tint];
+  const c = mk(512, 256), g = c.getContext('2d'), n = parseInt(tint.slice(1), 16), r = n >> 16 & 255, gg = n >> 8 & 255, b = n & 255;
+  const col = a => `rgba(${r},${gg},${b},${a})`;
+  g.save(); g.scale(2, 1); let gr = g.createRadialGradient(128, 128, 0, 128, 128, 126);
+  gr.addColorStop(0, col(.06)); gr.addColorStop(.35, col(.12)); gr.addColorStop(.72, col(.3)); gr.addColorStop(.86, col(.22)); gr.addColorStop(1, col(0));
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256); g.restore();
+  // the bright focus of light through the bowl
+  gr = g.createRadialGradient(300, 128, 0, 300, 128, 70); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = gr; g.fillRect(200, 40, 200, 180);
+  g.globalCompositeOperation = 'destination-in'; gr = g.createLinearGradient(0, 0, 512, 0); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,.35)'); g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
+  return causticCache[tint] = new THREE.CanvasTexture(c);
+}
 function footRadius(def) {
   if (def.flat) return def.R;
   const pts = def.parts[def.glass ? 0 : 0].pr.pts; let r = 0; for (const p of pts) if (p[1] < .012) r = Math.max(r, p[0] + p[2] / 2); return r || def.R * .6;
@@ -772,6 +800,12 @@ function buildObjects() {
     const fr = footRadius(def) * (def.flat ? 2.1 : 2.6);
     cs.scale.set(fr, fr, 1); cs.rotation.x = -Math.PI / 2; cs.position.y = .0004; cs.renderOrder = -1; group.add(cs); o.contact = cs;
     root.add(group); group.updateMatrixWorld(true);
+    if (def.glass) {
+      const L = new THREE.Vector3(1.1, 0, -1.2).normalize(), len = def.R * 2 + def.H * .72, wid = def.R * 2.3;
+      const holder = new THREE.Group(); holder.rotation.y = Math.atan2(-L.z, L.x); holder.position.y = .0005;
+      const cm = new THREE.Mesh(new THREE.PlaneGeometry(len, wid), new THREE.MeshBasicMaterial({ map: causticTex(def.tint), transparent: true, depthWrite: false, toneMapped: false }));
+      cm.rotation.x = -Math.PI / 2; cm.position.x = len / 2 - def.R * .9; cm.renderOrder = -1; holder.add(cm); group.add(holder);
+    }
     if (def.flat) { o.wtris = worldTris(meshes[0].geometry, meshes[0].matrixWorld); o.wbox = boxOf(o.wtris); hfRaster(o.wtris); }
     o.H = def.H;
     objs.push(o);
@@ -784,37 +818,49 @@ function radiusAt(o, y) {
   return best;
 }
 
-/* ------------------------------------------------------------- camera fit */
-const camBase = new THREE.Vector3(), camTarget = new THREE.Vector3();
-function fitCamera() {
+/* ------------------------------------------------------------- camera */
+const camTarget = new THREE.Vector3();
+const VIEW = { az: 0, el: .63, dist: 2, fit: 2, tAz: 0, tEl: .63, tDist: 2, baseEl: .63 };
+function placeCamera(az, el, dist) {
+  camera.position.set(camTarget.x + Math.sin(az) * Math.cos(el) * dist, camTarget.y + Math.sin(el) * dist, camTarget.z + Math.cos(az) * Math.cos(el) * dist);
+  camera.lookAt(camTarget); camera.updateMatrixWorld();
+}
+function fitCamera(resetView = true) {
   const tall = innerWidth / innerHeight < .9;
   camera.fov = tall ? 34 : 26; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  const pitch = (tall ? 50 : 36) * Math.PI / 180;
+  const el = (tall ? 50 : 36) * Math.PI / 180;
   const box = new THREE.Box3();
   for (const o of objs) { box.expandByPoint(new THREE.Vector3(o.x - o.def.R, 0, o.z - o.def.R)); box.expandByPoint(new THREE.Vector3(o.x + o.def.R + (o.def.extraR || 0), o.def.H, o.z + o.def.R)); }
   box.getCenter(camTarget); camTarget.y = 0.03;
-  const dir = new THREE.Vector3(0, Math.sin(pitch), Math.cos(pitch));
   const corners = []; for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
-  const mx = .9, myTop = tall ? .84 : .84, myBot = tall ? .92 : .9;
   let lo = .3, hi = 12;
   for (let it = 0; it < 40; it++) {
-    const d = (lo + hi) / 2; camera.position.copy(camTarget).addScaledVector(dir, d); camera.lookAt(camTarget); camera.updateMatrixWorld();
-    let ok = true; for (const c of corners) { const p = c.clone().project(camera); if (Math.abs(p.x) > mx || p.y > myTop || p.y < -myBot || p.z > 1) { ok = false; break; } }
+    const d = (lo + hi) / 2; placeCamera(0, el, d);
+    let ok = true; for (const c of corners) { const p = c.clone().project(camera); if (Math.abs(p.x) > .92 || p.y > .86 || p.y < -.9 || p.z > 1) { ok = false; break; } }
     if (ok) hi = d; else lo = d;
   }
-  camera.position.copy(camTarget).addScaledVector(dir, hi); camera.lookAt(camTarget); camera.updateMatrixWorld();
-  camBase.copy(camera.position);
+  VIEW.fit = hi; VIEW.baseEl = el;
+  if (resetView) { VIEW.az = VIEW.tAz = 0; VIEW.el = VIEW.tEl = el; VIEW.dist = VIEW.tDist = hi; }
+  placeCamera(VIEW.az, VIEW.el, VIEW.dist);
+}
+function orbit(dAz, dEl, zoom = 1) {
+  VIEW.tAz += dAz; VIEW.tEl = clamp(VIEW.tEl + dEl, .1, 1.5); VIEW.tDist = clamp(VIEW.tDist * zoom, VIEW.fit * .35, VIEW.fit * 1.6);
 }
 
 /* ------------------------------------------------------------------ audio */
 const SFX = { ctx: null, buf: {}, on: true, last: [] };
-const SFX_NAMES = { ceramic_smash: 3, glass_smash: 3, pane_smash: 2, ceramic_tink: 6, cup_clink: 4, glass_tink: 6, glass_tick: 6, crunch: 3, thud: 3, swing: 2 };
+const SFX_NAMES = { ceramic_smash: 3, glass_smash: 3, ceramic_land: 5, plate_land: 3, glass_land: 5, crunch: 3, thud: 3, swing: 2 };
 function audioInit() {
   if (SFX.ctx) { if (SFX.ctx.state === 'suspended') SFX.ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
   const A = SFX.ctx = new AC();
   const comp = A.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4; comp.attack.value = .003; comp.release.value = .2;
-  SFX.out = A.createGain(); SFX.out.gain.value = .9; SFX.out.connect(comp); comp.connect(A.destination);
+  // take the glassy edge off everything: a shelf down above 4.5 kHz and a soft roll-off above 9 kHz
+  const shelf = A.createBiquadFilter(); shelf.type = 'highshelf'; shelf.frequency.value = 4500; shelf.gain.value = -8;
+  const lp = A.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000; lp.Q.value = .5;
+  const warm = A.createBiquadFilter(); warm.type = 'peaking'; warm.frequency.value = 220; warm.Q.value = .8; warm.gain.value = 3;
+  SFX.out = A.createGain(); SFX.out.gain.value = .85; SFX.out.connect(shelf); shelf.connect(lp); lp.connect(warm); warm.connect(comp); comp.connect(A.destination);
+  const nb = A.createBuffer(1, A.sampleRate, A.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; SFX.noise = nb;
   const len = A.sampleRate * 1.4 | 0, ir = A.createBuffer(2, len, A.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4); }
   SFX.verb = A.createConvolver(); SFX.verb.buffer = ir; const wet = A.createGain(); wet.gain.value = .16; SFX.verb.connect(wet); wet.connect(comp);
@@ -827,13 +873,23 @@ function play(name, { gain = 1, rate = 1, pan = 0, verb = .5, delay = 0 } = {}) 
   if (!SFX.ctx || !SFX.on) return;
   const list = SFX.buf[name]; if (!list || !list.length) return;
   const A = SFX.ctx, now = A.currentTime;
-  SFX.last = SFX.last.filter(t => now - t < .045); if (SFX.last.length > 5 && gain < .6) return; SFX.last.push(now);
+  SFX.last = SFX.last.filter(t => now - t < .06); if (SFX.last.length > 3 && gain < .6) return; SFX.last.push(now);
   const src = A.createBufferSource(); src.buffer = pick(list); src.playbackRate.value = rate;
   const g = A.createGain(); g.gain.value = gain;
   let node = g; src.connect(g);
   if (A.createStereoPanner) { const p = A.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); g.connect(p); node = p; }
   node.connect(SFX.out); if (verb > 0) { const v = A.createGain(); v.gain.value = verb; node.connect(v); v.connect(SFX.verb); }
   src.start(now + delay);
+}
+// weight: a short low thump with a little dust of noise, felt more than heard
+function body(gain, f0 = 120, f1 = 44, dur = .2) {
+  if (!SFX.ctx || !SFX.on) return;
+  const A = SFX.ctx, t = A.currentTime + .002, o = A.createOscillator(), g = A.createGain();
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(SFX.out); o.start(t); o.stop(t + dur + .05);
+  const n = A.createBufferSource(); n.buffer = SFX.noise; const f = A.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; const ng = A.createGain();
+  ng.gain.setValueAtTime(gain * .5, t); ng.gain.exponentialRampToValueAtTime(.0001, t + .09); n.connect(f); f.connect(ng); ng.connect(SFX.out); n.start(t, Math.random() * .5); n.stop(t + .12);
 }
 const panX = x => { const v = new THREE.Vector3(x, 0, 0).project(camera); return clamp(v.x * .7, -.8, .8); };
 
@@ -916,44 +972,50 @@ function stepRings(dt) {
 }
 
 /* ------------------------------------------------------------- the hammer */
-const hammer = new THREE.Group(), hPivot = new THREE.Group(), hModel = new THREE.Group();
+// the striking face is the origin; the head stands on it, the handle rises toward you
+const hammer = new THREE.Group(), hPivot = new THREE.Group();
 (function buildHammer() {
-  const steel = new THREE.MeshPhysicalMaterial({ color: 0xc8ccd1, metalness: 1, roughness: .26, clearcoat: .3, clearcoatRoughness: .2 });
+  const steel = new THREE.MeshPhysicalMaterial({ color: 0xd2d5da, metalness: 1, roughness: .22, clearcoat: .4, clearcoatRoughness: .15 });
   const headPts = [[0, 0], [.0118, 0], [.0136, .0012], [.0146, .004], [.0146, .0662], [.0136, .0688], [.0118, .07], [0, .07]].map(p => new THREE.Vector2(p[0], p[1]));
   const head = new THREE.Mesh(new THREE.LatheGeometry(headPts, 48), steel); head.castShadow = true;
   const wood = canvasTex(woodCanvas());
   const hPts = [[0, 0], [.0062, 0], [.0066, .006], [.0064, .05], [.0074, .12], [.0086, .2], [.0098, .245], [.0104, .256], [.0092, .262], [0, .263]].map(p => new THREE.Vector2(p[0], p[1]));
-  const handle = new THREE.Mesh(new THREE.LatheGeometry(hPts, 32), new THREE.MeshPhysicalMaterial({ map: wood, roughness: .42, clearcoat: .6, clearcoatRoughness: .3 }));
-  handle.castShadow = true; handle.rotation.z = -Math.PI / 2; handle.position.set(0, .035, 0);
+  const arm = new THREE.Group(); arm.position.set(0, .035, 0); arm.rotation.z = -Math.PI / 2 + .42;
+  const handle = new THREE.Mesh(new THREE.LatheGeometry(hPts, 32), new THREE.MeshPhysicalMaterial({ map: wood, roughness: .42, clearcoat: .6, clearcoatRoughness: .3 })); handle.castShadow = true;
   const gripPts = [[.0081, .14], [.0093, .145], [.0104, .2], [.0111, .245], [.0104, .25]].map(p => new THREE.Vector2(p[0], p[1]));
-  const grip = new THREE.Mesh(new THREE.LatheGeometry(gripPts, 32), new THREE.MeshPhysicalMaterial({ color: 0x3d281c, roughness: .55, sheen: .5, sheenColor: 0x8a6a55 }));
-  grip.castShadow = true; grip.rotation.z = -Math.PI / 2; grip.position.set(0, .035, 0);
-  hModel.add(head, handle, grip);
-  hModel.position.set(-.25, -.035, 0); hPivot.position.set(.25, .035, 0);
-  hPivot.add(hModel); hammer.add(hPivot); hammer.scale.setScalar(.85); hammer.visible = false;
+  const grip = new THREE.Mesh(new THREE.LatheGeometry(gripPts, 32), new THREE.MeshPhysicalMaterial({ color: 0x3d281c, roughness: .55, sheen: .5, sheenColor: 0x8a6a55 })); grip.castShadow = true;
+  arm.add(handle, grip);
+  hPivot.add(head, arm); hammer.add(hPivot); hammer.scale.setScalar(.8); hammer.visible = false;
   hammer.traverse(m => { if (m.material) m.material.transparent = true; });
   scene.add(hammer);
 })();
-const HAM = { target: new THREE.Vector3(), pos: new THREE.Vector3(), vis: 0, touch: false, hideT: 0, ang: -.62, a0: -.62, t: 9, pending: null };
-const REST = -.62, HIT = .04;
+// where the face will land: a small ring lying on whatever is under the pointer
+const aim = new THREE.Mesh(new THREE.RingGeometry(.0042, .0058, 40), new THREE.MeshBasicMaterial({ color: 0x1d1a17, transparent: true, opacity: .55, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+aim.renderOrder = 20; aim.visible = false; scene.add(aim);
+const HAM = { point: new THREE.Vector3(), normal: new THREE.Vector3(0, 1, 0), vis: 0, touch: false, hideT: 0, t: 9, pending: null, k0: 1 };
+const LIFT = .07, TILT = .55;
 function hammerUpdate(rdt) {
   HAM.t += rdt;
-  const tHit = .06;
-  if (HAM.t < tHit) { const u = HAM.t / tHit; HAM.ang = lerp(HAM.a0, HIT, u * u * u); }
-  else { const u = HAM.t - tHit; HAM.ang = REST + (HIT - REST) * Math.exp(-u * 7.5) * Math.cos(u * 10); }
+  const tHit = .065;
+  let k; // 1 = raised, 0 = face on the target
+  if (HAM.t < tHit) { const u = HAM.t / tHit; k = HAM.k0 * (1 - u * u * u); }
+  else { const u = HAM.t - tHit; k = 1 - Math.exp(-u * 7) * Math.cos(u * 9) * (1 - Math.min(1, u * 1.2) * 0); k = clamp(k, -.05, 1.15); }
+  HAM.k = k;
   if (HAM.pending && HAM.t >= tHit) { const p = HAM.pending; HAM.pending = null; strike(p); }
-  HAM.pos.lerp(HAM.target, HAM.t < .3 ? 1 : Math.min(1, rdt * 22));
-  hammer.position.copy(HAM.pos);
-  const cr = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), cf = new THREE.Vector3().subVectors(camera.position, HAM.pos); cf.y = 0; cf.normalize();
-  const d = cr.multiplyScalar(.8).add(cf.multiplyScalar(.6)).normalize();
+  hammer.position.copy(HAM.point).addScaledVector(UP, LIFT * Math.max(0, k));
+  const cr = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), cf = new THREE.Vector3().subVectors(camera.position, HAM.point); cf.y = 0; cf.normalize();
+  const d = cr.multiplyScalar(.75).add(cf.multiplyScalar(.65)).normalize();
   hammer.rotation.set(0, Math.atan2(-d.z, d.x), 0);
-  hPivot.rotation.z = HAM.ang;
+  hPivot.rotation.z = -TILT * k;
   if (HAM.touch) { HAM.hideT -= rdt; HAM.vis = clamp(HAM.hideT / .35, 0, 1); }
   hammer.visible = HAM.vis > .01;
-  hammer.traverse(m => { if (m.material) m.material.opacity = HAM.vis; });
+  hammer.traverse(m => { if (m.material && m !== aim) m.material.opacity = HAM.vis; });
+  aim.visible = !HAM.touch && HAM.vis > .5;
+  if (aim.visible) { aim.position.copy(HAM.point).addScaledVector(HAM.normal, .0006); aim.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), HAM.normal); }
 }
 
 /* ---------------------------------------------------------------- physics */
+const UP = new THREE.Vector3(0, 1, 0);
 const G = 9.81, _v = new THREE.Vector3(), _r = new THREE.Vector3(), _n = new THREE.Vector3(), _t = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion(), _a = new THREE.Vector3();
 function invIw(s, vec, out) { _qi.copy(s.mesh.quaternion).invert(); out.copy(vec).applyQuaternion(_qi); out.multiply(s.invI); return out.applyQuaternion(s.mesh.quaternion); }
 function impulse(s, r, J) { s.v.addScaledVector(J, 1 / s.mass); _w.crossVectors(r, J); invIw(s, _w, _w); s.w.add(_w); }
@@ -972,7 +1034,6 @@ function contact(s, p, n, e, mu) {
     const jt = Math.min(vt / kt, mu * j); impulse(s, _r, _t.multiplyScalar(-jt)); }
   return -vn;
 }
-const UP = new THREE.Vector3(0, 1, 0);
 function stepShard(s, dt) {
   const m = s.mesh;
   s.v.y -= G * dt;
@@ -991,7 +1052,7 @@ function stepShard(s, dt) {
     for (const p of P) {
       const px = p.x - o.x, pz = p.z - o.z, d = Math.hypot(px, pz), R = radiusAt(o, p.y);
       if (p.y < o.H && d < R && d > 1e-5) { const nn = new THREE.Vector3(px / d, 0, pz / d); m.position.addScaledVector(nn, (R - d) * .8); const hv = contact(s, p, nn, .35, .3);
-        if (hv > .5) { play(o.glass ? 'glass_tick' : 'cup_clink', { gain: clamp(hv / 4, .05, .5), rate: rand(.95, 1.15) * o.def.pitch, pan: panX(o.x), verb: .3 }); o.wobV.x += rand(-1, 1) * hv * .05; o.wobV.y += rand(-1, 1) * hv * .05; } }
+        if (hv > .5) { play(o.glass ? 'glass_land' : 'ceramic_land', { gain: clamp(hv / 5, .05, .4), rate: rand(.95, 1.05) * o.def.pitch, pan: panX(o.x), verb: .3 }); o.wobV.x += rand(-1, 1) * hv * .05; o.wobV.y += rand(-1, 1) * hv * .05; } }
     }
   }
   if (lift > 0) m.position.y += lift * .9;
@@ -1000,9 +1061,9 @@ function stepShard(s, dt) {
   if (hitV > .3 && s.cool <= 0) {
     s.cool = .07; s.bounces++;
     if (s.bounces < 5) {
-      const big = s.area > 6e-4, g = clamp(hitV / 3.2, .04, .85) * (s.bounces === 1 ? 1 : .6);
-      const name = s.obj.glass ? (big ? 'glass_tink' : 'glass_tick') : (big ? 'ceramic_tink' : 'cup_clink');
-      play(name, { gain: g * (s.obj.glass ? .7 : .8), rate: clamp(Math.pow(1.5e-3 / s.area, .12), .85, 1.6) * s.obj.def.pitch * rand(.95, 1.05), pan: panX(m.position.x), verb: .35 });
+      const g = clamp(hitV / 3.4, .04, .7) * (s.bounces === 1 ? 1 : .5) * clamp(Math.sqrt(s.area / 4e-4), .35, 1);
+      play(s.obj.glass ? 'glass_land' : 'ceramic_land', { gain: g * .75, rate: clamp(Math.pow(1.5e-3 / s.area, .06), .9, 1.15) * s.obj.def.pitch * rand(.96, 1.04), pan: panX(m.position.x), verb: .4 });
+      if (s.bounces === 1 && s.area > 1.2e-3) body(g * .25, 160, 70, .08);
       if (!s.obj.glass && hitV > 2.2 && Math.random() < .4) puff(m.position.x, m.position.y, m.position.z, .5);
     }
   }
@@ -1115,10 +1176,10 @@ function smash(o, hitWorld) {
   burst(hitWorld, o.def, o.def.flat ? 1 : 1.1, glassy);
   juice(.07, .28, .55, .006);
   const pan = panX(hitWorld.x);
-  if (glassy) { play('glass_smash', { gain: 1, rate: rand(.92, 1.08) * o.def.pitch, pan, verb: .6 }); play('pane_smash', { gain: .45, rate: rand(1.05, 1.25), pan, verb: .7, delay: .01 }); }
-  else { play('ceramic_smash', { gain: 1, rate: rand(.9, 1.05) * o.def.pitch, pan, verb: .55 }); play('crunch', { gain: .35, rate: rand(1.1, 1.3), pan, verb: .3 }); }
+  if (glassy) { play('glass_smash', { gain: .95, rate: rand(.9, 1.0) * Math.min(1, o.def.pitch), pan, verb: .7 }); body(.45, 150, 55, .16); }
+  else { play('ceramic_smash', { gain: 1, rate: rand(.88, .98) * Math.min(1, o.def.pitch), pan, verb: .55 }); play('crunch', { gain: .3, rate: rand(.85, .95), pan, verb: .25 }); body(.7, 125, 42, .22); }
   for (const n of objs) { if (n === o || n.broken) continue; const d = Math.hypot(n.x - o.x, n.z - o.z); if (d < .38) { n.wobV.x += (n.x - o.x) / d * (1 - d / .38) * 1.4; n.wobV.y += (n.z - o.z) / d * (1 - d / .38) * 1.4;
-    if (d < .26) play(n.glass ? 'glass_tick' : 'cup_clink', { gain: .25 * (1 - d / .26), rate: n.def.pitch * rand(.95, 1.1), pan: panX(n.x), delay: rand(.02, .08), verb: .3 }); } }
+    if (d < .26) play(n.glass ? 'glass_land' : 'ceramic_land', { gain: .2 * (1 - d / .26), rate: n.def.pitch * rand(.97, 1.03), pan: panX(n.x), delay: rand(.03, .09), verb: .3 }); } }
   if (navigator.vibrate) try { navigator.vibrate(glassy ? [12, 24, 8] : 26); } catch (e) { }
   if (o.def.flat) hfRebuild(o.wbox);
 }
@@ -1170,8 +1231,9 @@ function pickAt(cx, cy) {
   const targets = []; for (const o of objs) if (!o.broken && o.appear > .7) targets.push(...o.meshes);
   for (const s of shards) targets.push(s.mesh);
   const hits = ray.intersectObjects(targets, false);
-  if (hits.length) { const h = hits[0]; return { point: h.point.clone(), obj: h.object.userData.obj, shard: h.object.userData.shard }; }
-  const t = -ray.ray.origin.y / ray.ray.direction.y; if (t > 0) { const p = ray.ray.origin.clone().addScaledVector(ray.ray.direction, t); p.y = hfAt(p.x, p.z); return { point: p }; }
+  if (hits.length) { const h = hits[0]; const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : UP.clone(); if (n.dot(ray.ray.direction) > 0) n.negate();
+    return { point: h.point.clone(), normal: n, obj: h.object.userData.obj, shard: h.object.userData.shard }; }
+  const t = -ray.ray.origin.y / ray.ray.direction.y; if (t > 0) { const p = ray.ray.origin.clone().addScaledVector(ray.ray.direction, t); p.y = hfAt(p.x, p.z); return { point: p, normal: UP.clone() }; }
   return null;
 }
 function strike(hit) {
@@ -1192,14 +1254,13 @@ function strike(hit) {
     if (glassy) for (let i = 0; i < 8; i++) addP({ k: 2, x: p.x + rand(-.03, .03), y: p.y + rand(0, .03), z: p.z + rand(-.03, .03), vx: 0, vy: 0, vz: 0, s: rand(.01, .022), life: -rand(0, .3), max: rand(.35, .7), c: [1, 1, 1] });
     else puff(p.x, p.y, p.z, 1);
     juice(.035, .55, .25, .0025);
-    play(glassy ? 'glass_tick' : 'crunch', { gain: glassy ? .9 : .8, rate: rand(.95, 1.15) * def.pitch, pan: panX(p.x), verb: .35 });
-    if (glassy) play('glass_tink', { gain: .35, rate: rand(1.1, 1.4), pan: panX(p.x), delay: .03 });
-    else play('cup_clink', { gain: .45, rate: rand(1.05, 1.3), pan: panX(p.x), delay: .02 });
+    if (glassy) { play('glass_smash', { gain: .4, rate: rand(1.05, 1.15), pan: panX(p.x), verb: .5 }); play('glass_land', { gain: .4, rate: rand(.97, 1.05), pan: panX(p.x), delay: .03 }); body(.25, 170, 70, .1); }
+    else { play('crunch', { gain: .75, rate: rand(.92, 1.02), pan: panX(p.x), verb: .3 }); play('ceramic_land', { gain: .35, rate: rand(.97, 1.05), pan: panX(p.x), delay: .025 }); body(.4, 140, 55, .14); }
     if (navigator.vibrate) try { navigator.vibrate(10); } catch (e) { }
     return;
   }
   addRing(p.x, .0015, p.z, '#b9b1a6', .09, .55); puff(p.x, .003, p.z, .8); juice(.02, 1, 0, .0015);
-  play('thud', { gain: .8, rate: rand(.9, 1.05), pan: panX(p.x), verb: .2 });
+  play('thud', { gain: .7, rate: rand(.9, 1.0), pan: panX(p.x), verb: .2 }); body(.45, 110, 45, .16);
 }
 
 /* ------------------------------------------------------------------- loop */
@@ -1222,36 +1283,71 @@ function frame(now) {
   glintT -= rdt;
   if (glintT < 0 && statics.length) { glintT = rand(.08, .25);
     for (let k = 0; k < 6; k++) { const s = pick(statics); if (s.obj.glass || Math.random() < .1) { const b = s.wbox; addP({ k: 2, x: rand(b.min.x, b.max.x), y: b.max.y + .001, z: rand(b.min.z, b.max.z), vx: 0, vy: 0, vz: 0, s: rand(.008, .02), life: 0, max: rand(.5, 1.1), c: [1, 1, 1] }); break; } } }
-  hammerUpdate(rdt);
+  const kv = 1 - Math.exp(-rdt * 14);
+  VIEW.az += (VIEW.tAz - VIEW.az) * kv; VIEW.el += (VIEW.tEl - VIEW.el) * kv; VIEW.dist += (VIEW.tDist - VIEW.dist) * kv;
+  placeCamera(VIEW.az, VIEW.el, VIEW.dist);
   shake *= Math.exp(-rdt * 12);
-  camera.position.copy(camBase); if (shake > 1e-5) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(shake));
+  if (shake > 1e-5) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(shake));
+  if (hoverXY && !HAM.touch && HAM.t > .12) { const h = pickAt(hoverXY[0], hoverXY[1]); if (h) { HAM.point.copy(h.point); HAM.normal.copy(h.normal); } }
+  hammerUpdate(rdt);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 /* ------------------------------------------------------------------ input */
+// one finger or a click: the hammer. two fingers, a trackpad swipe or a right-drag: turn the table. pinch: closer.
 let hoverXY = null;
-const cv = renderer.domElement;
-cv.addEventListener('pointerdown', e => {
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  e.preventDefault(); audioInit();
-  HAM.touch = e.pointerType !== 'mouse';
-  const hit = pickAt(e.clientX, e.clientY); if (!hit) return;
+const cv = renderer.domElement, touches = new Map();
+let tapTimer = null, tapAt = null, gesture = null, rdrag = null;
+function swingAt(x, y, touch) {
+  audioInit();
+  const hit = pickAt(x, y); if (!hit) return;
   if (HAM.pending) strike(HAM.pending);
-  HAM.target.copy(hit.point); if (HAM.touch || HAM.vis < .5) HAM.pos.copy(hit.point);
-  HAM.vis = 1; HAM.hideT = 1; HAM.a0 = HAM.ang; HAM.t = 0; HAM.pending = hit;
-  play('swing', { gain: .22, rate: rand(1.1, 1.3), verb: 0 });
+  HAM.touch = touch; HAM.point.copy(hit.point); HAM.normal.copy(hit.normal);
+  HAM.vis = 1; HAM.hideT = 1.1; HAM.k0 = Math.max(0, Math.min(1, HAM.k ?? 1)); HAM.t = 0; HAM.pending = hit;
+  play('swing', { gain: .16, rate: rand(1.0, 1.1), verb: 0 });
+}
+function gestureState() { const p = [...touches.values()]; return { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) }; }
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); audioInit();
+  if (e.pointerType === 'mouse') {
+    if (e.button === 2) { rdrag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); return; }
+    if (e.button === 0) swingAt(e.clientX, e.clientY, false);
+    return;
+  }
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touches.size === 1) {
+    // wait a breath to see whether a second finger follows
+    tapAt = { x: e.clientX, y: e.clientY };
+    clearTimeout(tapTimer); tapTimer = setTimeout(() => { if (touches.size <= 1 && tapAt && !gesture) swingAt(tapAt.x, tapAt.y, true); tapAt = null; }, 70);
+  } else if (touches.size === 2) { clearTimeout(tapTimer); tapAt = null; gesture = gestureState(); }
 });
-addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; HAM.touch = false; if (e.target !== cv) { HAM.vis = 0; return; } hoverXY = [e.clientX, e.clientY]; HAM.vis = 1; });
-document.addEventListener('mouseleave', () => { if (!HAM.touch) HAM.vis = 0; });
-setInterval(() => { if (hoverXY && !HAM.touch && HAM.t > .25) { const h = pickAt(hoverXY[0], hoverXY[1]); if (h) HAM.target.copy(h.point); } }, 33);
+addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') {
+    if (rdrag) { orbit(-(e.clientX - rdrag.x) * .006, (e.clientY - rdrag.y) * .005); rdrag = { x: e.clientX, y: e.clientY }; return; }
+    HAM.touch = false; if (e.target !== cv) { HAM.vis = 0; hoverXY = null; return; } hoverXY = [e.clientX, e.clientY]; HAM.vis = 1; return;
+  }
+  if (!touches.has(e.pointerId)) return;
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (tapAt && Math.hypot(e.clientX - tapAt.x, e.clientY - tapAt.y) > 12) { clearTimeout(tapTimer); tapAt = null; }
+  if (touches.size === 2 && gesture) { const g = gestureState(); orbit(-(g.x - gesture.x) * .007, (g.y - gesture.y) * .006, gesture.d / Math.max(20, g.d)); gesture = g; }
+}, { passive: false });
+const endTouch = e => { if (e.pointerType === 'mouse') { if (rdrag) rdrag = null; return; } touches.delete(e.pointerId); if (touches.size < 2) gesture = null; };
+addEventListener('pointerup', endTouch); addEventListener('pointercancel', endTouch);
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey) orbit(0, 0, Math.exp(e.deltaY * .01));            // trackpad pinch
+  else orbit(-e.deltaX * .004, e.deltaY * .0032);                   // two-finger swipe turns the table
+}, { passive: false });
+document.addEventListener('mouseleave', () => { if (!HAM.touch) { HAM.vis = 0; hoverXY = null; } });
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight); pMat.uniforms.uScale.value = innerHeight * DPR * .5;
   const tall = innerWidth / innerHeight < .9;
-  if ((tall ? 'tall' : 'wide') !== layoutKey && !objs.some(o => o.broken)) buildObjects(); else fitCamera();
+  if ((tall ? 'tall' : 'wide') !== layoutKey && !objs.some(o => o.broken)) buildObjects(); else fitCamera(false);
 });
 document.getElementById('sound').addEventListener('click', e => { SFX.on = !SFX.on; e.currentTarget.setAttribute('aria-pressed', SFX.on); audioInit(); });
-document.getElementById('reset').addEventListener('click', () => buildObjects());
+document.getElementById('reset').addEventListener('click', () => { buildObjects(); });
 window.__smash = { pickAt, strike, state: () => ({ objs: objs.map(o => [o.kind, o.broken]), shards: shards.length, statics: statics.length, flying: shards.filter(s => !s.asleep).length }),
   shardScreen: () => { const s = pick(shards); if (!s) return null; const v = s.mesh.position.clone().project(camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; },
   screen: kind => { const o = objs.find(q => q.kind === kind && !q.broken); if (!o) return null; const v = new THREE.Vector3(o.x, o.def.flat ? .015 : o.H * .55, o.z).project(camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; } };
