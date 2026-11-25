@@ -385,8 +385,8 @@ const glazeN = { normalMap: peel, normalScale: new THREE.Vector2(.05, .05) };
 function porcelain(opts = {}) { return new THREE.MeshPhysicalMaterial(Object.assign({ color: 0xf7f7f3, roughness: .2, clearcoat: 1, clearcoatRoughness: .07, ior: 1.52, specularIntensity: .7 }, glazeN, opts)); }
 function biscuit(col) { return new THREE.MeshStandardMaterial({ color: col, roughness: .94, metalness: 0 }); }
 function glass(tint, base, edge = .92) {
-  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: .02, metalness: 0, ior: 1.5, specularIntensity: 1, envMapIntensity: 3,
-    iridescence: .4, iridescenceIOR: 1.33, iridescenceThicknessRange: [220, 620], transparent: true, depthWrite: false });
+  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: .02, metalness: 0, ior: 1.5, specularIntensity: 1, envMapIntensity: 2,
+    iridescence: .2, iridescenceIOR: 1.33, iridescenceThicknessRange: [220, 620], transparent: true, depthWrite: false });
   // premultiplied: the tinted body lets the room through, the reflections are added on top at full strength
   m.blending = THREE.CustomBlending; m.blendSrc = THREE.OneFactor; m.blendDst = THREE.OneMinusSrcAlphaFactor;
   m.blendSrcAlpha = THREE.OneFactor; m.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
@@ -397,9 +397,9 @@ function glass(tint, base, edge = .92) {
       float f1 = 1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition)));
       float fr = pow(f1, 1.25);
       float ga = clamp(mix(uBase, uEdge, fr), 0.0, 1.0);
-      vec3 tint = mix(uTint, vec3(dot(uTint, vec3(0.3333))), 0.24);
-      vec3 bodyC = tint * mix(1.0, 0.42, fr) * mix(1.0, 0.45, pow(f1, 4.0)) * (0.72 + 0.22 * clamp(dot(totalDiffuse, vec3(0.333)), 0.0, 1.6));
-      gl_FragColor = vec4(bodyC * ga + totalSpecular * 2.6, ga);`);
+      vec3 tint = mix(uTint, vec3(dot(uTint, vec3(0.3333))), 0.1);
+      vec3 bodyC = tint * mix(1.0, 0.42, fr) * mix(1.0, 0.45, pow(f1, 4.0)) * (0.5 + 0.14 * clamp(dot(totalDiffuse, vec3(0.333)), 0.0, 1.6));
+      gl_FragColor = vec4(bodyC * ga + totalSpecular * 1.5, ga);`);
   };
   return m;
 }
@@ -725,16 +725,16 @@ function makeKinds() {
 const KINDS = makeKinds();
 const LAYOUTS = {
   wide: [
-    ['bottle', -.64, -.27], ['vase', -.44, -.25], ['wineSlate', -.13, -.3], ['wineRose', -.025, -.27], ['wineAmber', .08, -.3], ['tumblerPink', .37, -.27], ['tumblerTeal', .48, -.29], ['vaseGlass', .65, -.24],
-    ['mug', -.27, -.01], ['bowlFluted', .19, -.04], ['bowlBlue', .55, .02],
-    ['plateBlue', -.52, .25], ['bowlGreen', -.14, .24], ['plateChintz', .2, .27], ['plateCobalt', .49, .3],
+    ['bottle', -.44, -.2], ['vase', -.31, -.19], ['wineSlate', -.17, -.21], ['wineRose', -.08, -.195], ['wineAmber', .01, -.21], ['tumblerPink', .12, -.2], ['tumblerTeal', .21, -.215], ['vaseGlass', .31, -.19],
+    ['mug', -.3, -.02], ['bowlFluted', -.08, -.025], ['bowlBlue', .12, -.015], ['plateCobalt', .3, .005],
+    ['plateBlue', -.33, .2], ['bowlGreen', -.085, .2], ['plateChintz', .135, .205],
   ],
   tall: [
-    ['bottle', -.24, -.62], ['vase', -.08, -.6], ['wineSlate', .07, -.63], ['wineRose', .165, -.6], ['wineAmber', .26, -.63],
-    ['tumblerPink', -.22, -.37], ['mug', -.075, -.35], ['bowlFluted', .1, -.36], ['tumblerTeal', .245, -.37],
-    ['plateBlue', -.11, -.07], ['bowlBlue', .18, -.08],
-    ['bowlGreen', -.15, .21], ['plateCobalt', .14, .2],
-    ['plateChintz', 0, .45], ['vaseGlass', .27, .43],
+    ['bottle', -.22, -.42], ['vase', -.1, -.41], ['wineSlate', .03, -.425], ['wineRose', .12, -.41], ['wineAmber', .21, -.425],
+    ['tumblerPink', -.2, -.22], ['mug', -.085, -.215], ['bowlFluted', .085, -.22], ['tumblerTeal', .2, -.225],
+    ['plateBlue', -.1, 0], ['bowlBlue', .12, -.005], ['vaseGlass', .245, .01],
+    ['bowlGreen', -.14, .245], ['plateCobalt', .1, .245],
+    ['plateChintz', -.02, .46],
   ],
 };
 
