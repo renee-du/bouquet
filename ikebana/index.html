@@ -139,7 +139,7 @@ const PHOTOS = [
 const SCALE = {'orchid-top':.86,'dahlia-scarlet':.78,'cherry-b':.78,'lily-center':.96,'hollyhock-side':.62,'hollyhock-bud':.5};
 const TYPES = {
   lily:    {size:1.0, cup:.15, stemR:.03,  stemCol:0x6e9b46, k:24, zeta:.13, calyx:.05,
-            leaves:{shape:'lance', n:11, t0:.46, t1:.9, len:.3, wid:.05, col:0x5d8f39, ang:.55},
+            leaves:{shape:'lance', n:4, t0:.5, t1:.86, len:.3, wid:.05, col:0x5d8f39, ang:.55},
             extras:[{kind:'bud', t:.88, len:.17, size:[.045,.17], tint:.35, base:0xb9c286}]},
   orchid:  {size:.84, cup:.04, stemR:.018, stemCol:0x5f6a3a, k:18, zeta:.12, calyx:.035,
             leaves:null,
@@ -160,7 +160,7 @@ const TYPES = {
                     {kind:'bud', t:.5, len:.05, size:[.018,.026], tint:0, base:0xb0476a},{kind:'bud', t:.6, len:.04, size:[.016,.024], tint:0, base:0xc25a7a},{kind:'bud', t:.74, len:.05, size:[.018,.028], tint:0, base:0xa8405f},{kind:'bud', t:.9, len:.04, size:[.016,.024], tint:0, base:0xc25a7a}]},
 };
 // ikebana reads as lines first: heads a little smaller than in the bouquet
-for(const t of Object.values(TYPES)) t.size*=.78;
+for(const t of Object.values(TYPES)){ t.size*=.78; t.stemR*=.58; t.calyx*=.75; }
 const typeOf = k => k.split('-')[0];
 const byKey = Object.fromEntries(FL.map(f => [f.key, f]));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
