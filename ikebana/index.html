@@ -137,10 +137,12 @@ const PHOTOS = [
 ];
 const SCALE = {'phalaenopsis-side':.62,'lisianthus-blush':.86,'hollyhock-bell':.82,'hollyhock-upper':.9,'echinops-left':1.05,'coriander-c':.85};
 const TYPES = {
-  // a slender woody stem; papery bract clusters sit along the upper part on short spurs, the newest one at the tip
-  bougainvillea:{size:.4, cup:.05, stemR:.02, stemCol:0x4f4a2c, bark:true, k:42, zeta:.2, calyx:0, bracts:true,
-            leaves:{shape:'small', n:8, t0:.4, t1:.95, len:.12, wid:.075, col:0x3b6a2c, ang:.9},
-            extras:[.52,.61,.7,.78,.86,.93].map((t,i)=>({kind:'sprite', bract:true, t, len:.09+(i%2)*.06, scale:.72+((i*5)%3)*.12}))},
+  // a fine tan-brown woody stem with small thorns; side twigs each end in a three-bract cluster, the last one at the tip
+  bougainvillea:{size:.3, cup:0, stemR:.014, stemCol:0x9a7653, bark:true, k:40, zeta:.2, calyx:0, bracts3d:true,
+            leaves:{shape:'ovate', n:6, t0:.32, t1:.96, len:.2, wid:.13, col:0x7d9440, ang:.95},
+            extras:[
+              ...[.5,.63,.75,.86].map((t,i)=>({kind:'twig', t, len:.16+((i*3)%4)*.04, size:.15+((i*5)%3)*.02, az:i*2.5+.4, leaf:i%2===0})),
+              ...[.12,.22,.31,.4,.53,.7].map((t,i)=>({kind:'thorn', t, len:.022, az:i*2.2}))]},
   phalaenopsis:{size:.8, cup:.05, stemR:.022, stemCol:0x4b5a33, k:20, zeta:.12, calyx:.03,
             leaves:null,
             extras:[{kind:'sprite', t:.84, len:.15, scale:.66, alt:true},{kind:'sprite', t:.74, len:.11, scale:.52, alt:true},
@@ -482,12 +484,88 @@ function leafGeo(spec){
     if(spec.shape==='lance') w=Math.pow(Math.sin(Math.PI*Math.pow(s,.72)),.8);
     else if(spec.shape==='oblong') w=Math.pow(Math.sin(Math.PI*Math.pow(s,.62)),.55);
     else if(spec.shape==='round') w=Math.pow(Math.sin(Math.PI*Math.pow(s,.5)),.6)*(1+.07*Math.sin(s*22));
+    else if(spec.shape==='ovate') w=Math.pow(Math.sin(Math.PI*Math.pow(s,.52)),.95);
     else if(spec.shape==='serrate') w=Math.pow(Math.sin(Math.PI*Math.pow(s,.68)),.8)*(1+.1*Math.abs(Math.sin(s*30))*(s>.1&&s<.95?1:0));
     else w=Math.pow(Math.sin(Math.PI*Math.pow(s,.75)),.75);
     for(let i=0;i<=nx;i++){ const a=i/nx*2-1; const x=a*w*.5; const z=Math.abs(a)*w*.16 - .22*s*s; pos.push(x, s, z); uv.push(i/nx, s); } }
   for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const a=j*(nx+1)+i, b=a+1, c=a+nx+1, d=c+1; idx.push(a,c,b, b,c,d); }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals();
   return leafGeoCache[id]=g;
+}
+
+/* ---- bougainvillea in the round: papery heart-shaped bracts in threes, each cradling a slim cream flower ---- */
+const SHARED = new Set();
+const BRACT_GEO = (() => {
+  const nx=10, ny=18, pos=[], uv=[], idx=[];
+  for(let j=0;j<=ny;j++){ const s=j/ny;
+    // broad, softly heart-shaped blade on a short claw, drawn to a fine point
+    const w = Math.pow(Math.sin(Math.PI*Math.pow(s,.58)),.62) * (1 - .12*Math.exp(-Math.pow((s-.12)/.08,2)));
+    for(let i=0;i<=nx;i++){ const a=i/nx*2-1;
+      const x=a*w*.6;
+      const z = -a*a*w*.2           // cupped toward the flower
+              + s*s*.16             // tip rolls outward
+              + .025*Math.sin(a*3.1+s*5)*s; // a papery wave
+      pos.push(x, s, z); uv.push(i/nx, s); } }
+  for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const a=j*(nx+1)+i, b=a+1, c=a+nx+1, d=c+1; idx.push(a,c,b, b,c,d); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals();
+  SHARED.add(g); return g;
+})();
+const FLORET_GEO = (() => { const g=new THREE.CylinderGeometry(.018,.026,1,6,1); g.translate(0,.5,0); SHARED.add(g); return g; })();
+const STAR_GEO = (() => { const s=new THREE.Shape(); for(let k=0;k<10;k++){ const a=k/10*Math.PI*2, r=k%2?.035:.085; k?s.lineTo(Math.cos(a)*r,Math.sin(a)*r):s.moveTo(Math.cos(a)*r,Math.sin(a)*r); } const g=new THREE.ShapeGeometry(s); SHARED.add(g); return g; })();
+const THORN_GEO = (() => { const g=new THREE.ConeGeometry(1,1,5); g.translate(0,.5,0); SHARED.add(g); return g; })();
+const FLORET_MAT = new THREE.MeshStandardMaterial({color:0xe9e3c2, roughness:.55}); FLORET_MAT.userData.shared=true;
+const STAR_MAT = new THREE.MeshStandardMaterial({color:0xfffdf4, emissive:0xfffbea, emissiveIntensity:.35, roughness:.5, side:THREE.DoubleSide}); STAR_MAT.userData.shared=true;
+
+const bractMats = {};
+function bractTone(key){
+  // the bract colour comes from your photo, brightened as if seen up close in daylight
+  const c=(avg[key]||new THREE.Color(0xd06a9a)).clone().convertLinearToSRGB(); const hsl={}; c.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, clamp(hsl.s*.8+.06,.3,.5), clamp(hsl.l*1.05+.2,.62,.76));
+}
+function bractMat(key){
+  const tone=key.includes('coral')?'coral':'mauve'; if(bractMats[tone]) return bractMats[tone];
+  const col=bractTone(key), W=256, H=512, [c,g]=cnv(W,H);
+  const css=(cc,a=1)=>`rgba(${cc.r*255|0},${cc.g*255|0},${cc.b*255|0},${a})`;
+  const pale=col.clone().lerp(new THREE.Color(0xfbf6e6),.72), deep=col.clone().offsetHSL(0,.06,-.14), vein=col.clone().offsetHSL(.01,.1,-.26);
+  // base (bottom of the canvas) is a pale cream that blushes to full colour toward the tip
+  const gr=g.createLinearGradient(0,H,0,0); gr.addColorStop(0,css(pale)); gr.addColorStop(.28,css(pale.clone().lerp(col,.45))); gr.addColorStop(.62,css(col)); gr.addColorStop(1,css(col.clone().lerp(deep,.35)));
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  // edges carry a little more pigment
+  const eg=g.createLinearGradient(0,0,W,0); eg.addColorStop(0,css(deep,.38)); eg.addColorStop(.22,css(deep,0)); eg.addColorStop(.78,css(deep,0)); eg.addColorStop(1,css(deep,.38)); g.fillStyle=eg; g.fillRect(0,0,W,H);
+  // fine netted veins: midrib, arching laterals, then a faint mesh between them
+  g.lineCap='round';
+  g.strokeStyle=css(vein,.55); g.lineWidth=2.4; g.beginPath(); g.moveTo(W/2,H); g.bezierCurveTo(W/2+3,H*.6,W/2-2,H*.3,W/2,0); g.stroke();
+  for(let i=0;i<9;i++){ const y=H*(.88-i*.092); for(const sd of [-1,1]){ g.strokeStyle=css(vein,.34); g.lineWidth=1.3; g.beginPath(); g.moveTo(W/2,y);
+      g.bezierCurveTo(W/2+sd*W*.18,y-H*.05, W/2+sd*W*.36,y-H*.1, W/2+sd*W*.47,y-H*.2); g.stroke(); } }
+  for(let i=0;i<260;i++){ const x=Math.random()*W, y=Math.random()*H, l=6+Math.random()*14, a=Math.random()*Math.PI;
+    g.strokeStyle=css(vein,.12); g.lineWidth=.8; g.beginPath(); g.moveTo(x,y); g.quadraticCurveTo(x+Math.cos(a)*l*.6+rnd(3),y+Math.sin(a)*l*.6+rnd(3),x+Math.cos(a)*l,y+Math.sin(a)*l); g.stroke(); }
+  // papery mottling
+  for(let i=0;i<140;i++){ const x=Math.random()*W,y=Math.random()*H,r=6+Math.random()*22; const rg=g.createRadialGradient(x,y,0,x,y,r); rg.addColorStop(0,`rgba(255,255,255,${Math.random()*.1})`); rg.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=rg; g.fillRect(x-r,y-r,r*2,r*2); }
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  // thin bracts glow when the light comes through them
+  const m=new THREE.MeshStandardMaterial({map:t, emissive:0xffffff, emissiveMap:t, emissiveIntensity:.3, roughness:.62, side:THREE.DoubleSide});
+  m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+    { float back = max( dot( -geometry.normal, normalize( vec3( 0.35, 0.8, 0.45 ) ) ), 0.0 );
+      reflectedLight.indirectDiffuse += diffuseColor.rgb * back * 0.35; }`); };
+  m.userData.shared=true; return bractMats[tone]=m;
+}
+function makeCluster(key, open=1){
+  const grp=new THREE.Group(), mat=bractMat(key); grp.userData.bracts=[];
+  const spin=Math.random()*6.28;
+  for(let k=0;k<3;k++){
+    const piv=new THREE.Group(); piv.rotation.y = spin + k*Math.PI*2/3 + rnd(.18); grp.add(piv);
+    const b=new THREE.Mesh(BRACT_GEO, mat); const tilt=(.78+rnd(.12))*open + .1;
+    b.rotation.x=tilt; b.scale.setScalar(.88+Math.random()*.24); b.castShadow=true; b.receiveShadow=true; piv.add(b);
+    grp.userData.bracts.push({b, tilt, ph:Math.random()*6.28});
+    // a slim tubular flower runs up the inside of each bract and opens into a tiny white star
+    const fl=new THREE.Group(); fl.rotation.x = tilt*.3; piv.add(fl); fl.position.z=-.02;
+    const tube=new THREE.Mesh(FLORET_GEO, FLORET_MAT); const L=.5+Math.random()*.2; tube.scale.set(1,L,1); tube.castShadow=true; fl.add(tube);
+    if(k!==1 || Math.random()<.5){ const st=new THREE.Mesh(STAR_GEO, STAR_MAT); st.position.y=L+.004; st.rotation.x=-Math.PI/2; st.rotation.z=Math.random(); fl.add(st); }
+  }
+  return grp;
+}
+function flutterCluster(grp, time, amt){
+  for(const q of grp.userData.bracts){ q.b.rotation.x = q.tilt + Math.sin(time*2.3+q.ph)*.045*amt; q.b.rotation.z = Math.sin(time*1.7+q.ph*1.3)*.03*amt; }
 }
 
 /* ---- dynamic tube (stems bend every frame) ---- */
@@ -818,7 +896,10 @@ function addFlower(def, pl){
   f.cap = new THREE.Mesh(capGeo, new THREE.MeshStandardMaterial({color:T.bark?0xcaa985:0xd7e2b0, roughness:.8, side:THREE.DoubleSide})); f.cap.matrixAutoUpdate=false; f.group.add(f.cap);
   // head
   const size=T.size*(SCALE[def.key]||1);
-  f.head = headMesh(T.bracts ? bractFor(def.key) : def.key, size, T.cup); f.headGroup=new THREE.Group(); f.headGroup.add(f.head.mesh);
+  if(T.bracts3d){ const cl=makeCluster(def.key); cl.rotation.x=Math.PI/2; cl.scale.setScalar(.19); const w=new THREE.Group(); w.add(cl);
+    f.head={mesh:w, cluster:cl, u:{uBreath:{value:0}}}; }
+  else f.head = headMesh(def.key, size, T.cup);
+  f.headGroup=new THREE.Group(); f.headGroup.add(f.head.mesh);
   if(T.calyx){ const cm=new THREE.Mesh(calyxGeo, stemMat); cm.scale.set(T.calyx*.9,T.calyx*.9,T.calyx*1.2); cm.castShadow=true; f.headGroup.add(cm); }
   f.group.add(f.headGroup);
   // leaves
@@ -831,9 +912,12 @@ function addFlower(def, pl){
   // extras: buds, secondary blooms, cherry twigs
   f.extras=[];
   for(const x of T.extras){
-    const e={...x, az:Math.random()*6.28, up:.35+Math.random()*.3, ph:Math.random()*6};
-    e.seg=new THREE.Mesh(segGeo, stemMat); e.seg.matrixAutoUpdate=false; e.seg.castShadow=true; f.group.add(e.seg);
-    if(x.kind==='bud'){ const col=new THREE.Color(x.base).lerp(avg[def.key]||new THREE.Color(0xffffff), x.tint);
+    const e={...x, az:x.az!=null ? x.az+rnd(.3) : Math.random()*6.28, up:.35+Math.random()*.3, ph:Math.random()*6};
+    e.seg=new THREE.Mesh(x.kind==='thorn'?THORN_GEO:segGeo, stemMat); e.seg.matrixAutoUpdate=false; e.seg.castShadow=true; f.group.add(e.seg);
+    if(x.kind==='thorn'){ e.up=-.15; }
+    else if(x.kind==='twig'){ e.obj=makeCluster(def.key, .9+Math.random()*.2); e.obj.matrixAutoUpdate=false; f.group.add(e.obj);
+      if(x.leaf){ const lm=f.leaves[0]?.m.material; e.leafM=new THREE.Mesh(leafGeo({shape:'ovate'}), lm); e.leafM.matrixAutoUpdate=false; e.leafM.castShadow=true; f.group.add(e.leafM); } }
+    else if(x.kind==='bud'){ const col=new THREE.Color(x.base).lerp(avg[def.key]||new THREE.Color(0xffffff), x.tint);
       e.obj=new THREE.Mesh(budGeo, new THREE.MeshStandardMaterial({color:col, roughness:.5})); e.obj.matrixAutoUpdate=false; e.obj.castShadow=true; f.group.add(e.obj); }
     else { const sib = FL.filter(o=>typeOf(o.key)===type && o.key!==def.key && o.photo>0); const key = x.bract ? bractFor(def.key) : x.alt ? (sib[Math.floor(Math.random()*sib.length)]||def).key : (x.key||def.key);
       const hm=headMesh(key, T.size*(x.scale||.6)*(x.alt?1:1), T.cup*.6); e.obj=hm.mesh; e.u=hm.u; e.obj.matrixAutoUpdate=false; f.group.add(e.obj); }
@@ -850,7 +934,7 @@ function addFlower(def, pl){
 }
 function disposeFlower(f){
   bouquet.remove(f.group);
-  f.group.traverse(o=>{ if(o.geometry && o.geometry!==segGeo && o.geometry!==budGeo && o.geometry!==capGeo && o.geometry!==calyxGeo && !Object.values(leafGeoCache).includes(o.geometry)) o.geometry.dispose(); if(o.material){ o.material.dispose(); } });
+  f.group.traverse(o=>{ if(o.geometry && !SHARED.has(o.geometry) && o.geometry!==segGeo && o.geometry!==budGeo && o.geometry!==capGeo && o.geometry!==calyxGeo && !Object.values(leafGeoCache).includes(o.geometry)) o.geometry.dispose(); if(o.material && !o.material.userData.shared){ o.material.dispose(); } });
 }
 
 /* ---- physics ---- */
@@ -886,6 +970,7 @@ function updateFlower(f, dt){
   const pop = age<1.2 ? 1 + .1*Math.exp(-5*age)*Math.sin(age*16) : 1;
   f.headGroup.scale.setScalar(pop*(f.out>0?1-f.out:1));
   f.head.u.uBreath.value = .012*Math.sin(clock*.9+f.phase)*(1+gust);
+  if(f.head.cluster) flutterCluster(f.head.cluster, clock+f.phase, 1+gust*3);
   // stem curve: end, tie, (kinks), behind-head
   const back=_v3.set(0,0,-1).applyQuaternion(_q).multiplyScalar(.035);
   const pts=f.curve.points; const Hs=pts[pts.length-1].copy(head).add(back);
@@ -928,9 +1013,19 @@ function updateFlower(f, dt){
     const az=e.az+Math.sin(clock*1.1+e.ph)*.08*(1+gust*2);
     _rad.copy(_n).multiplyScalar(Math.cos(az)).addScaledVector(_b,Math.sin(az));
     _dir.copy(_ct).multiplyScalar(e.up+.4).addScaledVector(_rad,.7).normalize();
-    const len=e.len*vis; const r=e.kind==='bud'? R*.32 : R*.45;
+    if(e.kind==='thorn'){ _dir.copy(_ct).multiplyScalar(.35).addScaledVector(_rad,1).normalize(); _tip.copy(_cp).addScaledVector(_rad,R*.8); orientTo(e.seg,_tip,_dir,R*.55*vis,e.len*vis,R*.55*vis); continue; }
+    const len=e.len*vis; const r=e.kind==='bud'? R*.32 : e.kind==='twig'? R*.5 : R*.45;
     orientTo(e.seg,_cp,_dir,r,len,r);
     _tip.copy(_cp).addScaledVector(_dir,len);
+    if(e.kind==='twig'){
+      // the cluster opens outward and a little toward you; a leaf rides partway along the twig
+      const ax=_v3.copy(_dir).multiplyScalar(.8).addScaledVector(f.N,.38).addScaledVector(UP,.22).normalize();
+      _q.setFromUnitVectors(UP,ax); _q2.setFromAxisAngle(ax,e.az); _q.premultiply(_q2); _s.setScalar(e.size*vis); e.obj.matrix.compose(_tip,_q,_s); e.obj.matrixWorldNeedsUpdate=true;
+      flutterCluster(e.obj, clock+e.ph, 1+gust*3);
+      if(e.leafM){ _side.crossVectors(_dir,_rad).normalize(); const ld=_v2.copy(_dir).multiplyScalar(.5).addScaledVector(_side,.85).addScaledVector(UP,-.15).normalize();
+        _nrm.crossVectors(_side,ld).normalize(); if(_nrm.y<0) _nrm.negate(); const sd=_v3.crossVectors(ld,_nrm).normalize();
+        _m.makeBasis(sd,ld,_nrm); _q.setFromRotationMatrix(_m); _p.copy(_cp).addScaledVector(_dir,len*.45); const ls=vis*.17+1e-4; _s.set(ls*.62,ls,ls); e.leafM.matrix.compose(_p,_q,_s); }
+      continue; }
     if(e.kind==='bud'){ _q.setFromUnitVectors(UP,_dir); _s.set(e.size[0]*vis,e.size[1]*.5*vis,e.size[0]*vis); e.obj.matrix.compose(_tip,_q,_s); }
     else { const nrm=e.bract ? _v3.copy(_rad).multiplyScalar(.4).addScaledVector(f.N,.85).addScaledVector(UP,.2).normalize() : _v3.copy(_rad).multiplyScalar(.75).addScaledVector(f.N,.5).addScaledVector(UP,.25).normalize();
       _q.setFromUnitVectors(ZAX,nrm); _q2.setFromAxisAngle(nrm,e.az); _q.premultiply(_q2); _s.setScalar(vis); e.obj.matrix.compose(_tip,_q,_s);
@@ -964,8 +1059,10 @@ function dropPetal(){
   const live=flowers.filter(f=>f.grow>=1 && !['phalaenopsis','echinops','coriander'].includes(f.type)); if(!live.length) return;
   const f=live[Math.floor(Math.random()*live.length)];
   const col=(avg[f.def.key]||new THREE.Color(0xffc0cb)).clone();
-  const m=new THREE.Mesh(petalGeo,new THREE.MeshLambertMaterial({color:col, emissive:col, emissiveIntensity:.35, side:THREE.DoubleSide, transparent:true}));
-  const sz = f.type==='bougainvillea'? .8 : f.type==='hollyhock'? 1.2 : 1;
+  let m;
+  if(f.type==='bougainvillea'){ const bm=bractMat(f.def.key).clone(); bm.transparent=true; bm.userData={}; m=new THREE.Mesh(BRACT_GEO,bm); }
+  else m=new THREE.Mesh(petalGeo,new THREE.MeshLambertMaterial({color:col, emissive:col, emissiveIntensity:.35, side:THREE.DoubleSide, transparent:true}));
+  const sz = f.type==='bougainvillea'? .12 : f.type==='hollyhock'? 1.2 : 1;
   m.scale.setScalar(sz); m.castShadow=true;
   const p=f.headGroup.position.clone().add(V(rnd(.15),rnd(.1),rnd(.15))); m.position.copy(p); bouquet.add(m);
   petals.push({m, v:V(rnd(.1),-.05,rnd(.1)), spin:V(rnd(2),rnd(2),rnd(2)), t:0, ph:Math.random()*6});
