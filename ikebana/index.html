@@ -127,40 +127,40 @@ button{font:inherit;color:inherit}
 (() => {
 'use strict';
 /* ================= data ================= */
-const FL = [{"key":"orchid-front","name":"Vanda orchid","photo":1,"x":346,"y":587,"w":403,"h":399,"W":1125,"H":1500,"cx":0.513,"cy":0.536},{"key":"orchid-top","name":"Vanda orchid","photo":1,"x":342,"y":429,"w":338,"h":253,"W":1125,"H":1500,"cx":0.527,"cy":0.399},{"key":"plumeria-red","name":"Red plumeria","photo":2,"x":368,"y":233,"w":436,"h":403,"W":1125,"H":1500,"cx":0.468,"cy":0.551},{"key":"plumeria-pink","name":"Pink plumeria","photo":2,"x":346,"y":530,"w":486,"h":487,"W":1125,"H":1500,"cx":0.533,"cy":0.476},{"key":"plumeria-yellow","name":"Yellow plumeria","photo":2,"x":665,"y":430,"w":343,"h":429,"W":1125,"H":1500,"cx":0.437,"cy":0.49},{"key":"lily-front","name":"Asiatic lily","photo":3,"x":470,"y":743,"w":628,"h":607,"W":1125,"H":1500,"cx":0.478,"cy":0.522},{"key":"lily-center","name":"Asiatic lily","photo":3,"x":402,"y":449,"w":448,"h":438,"W":1125,"H":1500,"cx":0.442,"cy":0.71},{"key":"lily-right","name":"Asiatic lily","photo":3,"x":634,"y":163,"w":453,"h":437,"W":1125,"H":1500,"cx":0.543,"cy":0.588},{"key":"dahlia-coral","name":"Coral dahlia","photo":5,"x":245,"y":458,"w":148,"h":149,"W":844,"H":1125,"cx":0.507,"cy":0.483},{"key":"dahlia-pink","name":"Pink dahlia","photo":5,"x":508,"y":613,"w":175,"h":154,"W":844,"H":1125,"cx":0.48,"cy":0.565},{"key":"dahlia-salmon","name":"Salmon dahlia","photo":5,"x":236,"y":670,"w":174,"h":152,"W":844,"H":1125,"cx":0.511,"cy":0.447},{"key":"dahlia-red","name":"Red dahlia","photo":5,"x":313,"y":880,"w":129,"h":130,"W":844,"H":1125,"cx":0.519,"cy":0.462},{"key":"dahlia-scarlet","name":"Scarlet dahlia","photo":5,"x":475,"y":499,"w":78,"h":96,"W":844,"H":1125,"cx":0.577,"cy":0.458},{"key":"cherry-a","name":"Cherry blossom","photo":4,"x":490,"y":786,"w":86,"h":65,"W":844,"H":1125,"cx":0.512,"cy":0.499},{"key":"cherry-b","name":"Cherry blossom","photo":4,"x":463,"y":577,"w":38,"h":45,"W":844,"H":1125,"cx":0.506,"cy":0.492},{"key":"hollyhock-top","name":"Hollyhock","photo":6,"x":330,"y":319,"w":494,"h":488,"W":1125,"H":1500,"cx":0.536,"cy":0.473},{"key":"hollyhock-low","name":"Hollyhock","photo":6,"x":426,"y":673,"w":482,"h":443,"W":1125,"H":1500,"cx":0.547,"cy":0.495},{"key":"hollyhock-side","name":"Hollyhock","photo":6,"x":275,"y":561,"w":181,"h":369,"W":1125,"H":1500,"cx":0.519,"cy":0.545},{"key":"hollyhock-bud","name":"Hollyhock bud","photo":6,"x":294,"y":1038,"w":235,"h":225,"W":1125,"H":1500,"cx":0.495,"cy":0.417}];
+const FL = [{"key":"bougainvillea-mauve","name":"Bougainvillea","photo":1,"x":448,"y":0,"w":245,"h":335,"W":1125,"H":1500,"cx":0.457,"cy":0.448},{"key":"bougainvillea-coral","name":"Bougainvillea","photo":1,"x":348,"y":440,"w":352,"h":160,"W":1125,"H":1500,"cx":0.659,"cy":0.75},{"key":"bougainvillea-lilac","name":"Bougainvillea","photo":1,"x":687,"y":325,"w":228,"h":235,"W":1125,"H":1500,"cx":0.496,"cy":0.404},{"key":"phalaenopsis-low","name":"Moth orchid","photo":2,"x":66,"y":658,"w":376,"h":274,"W":1125,"H":1500,"cx":0.511,"cy":0.482},{"key":"phalaenopsis-top","name":"Moth orchid","photo":2,"x":225,"y":382,"w":337,"h":287,"W":1125,"H":1500,"cx":0.496,"cy":0.498},{"key":"phalaenopsis-mid","name":"Moth orchid","photo":2,"x":613,"y":374,"w":236,"h":214,"W":1125,"H":1500,"cx":0.53,"cy":0.486},{"key":"phalaenopsis-side","name":"Moth orchid","photo":2,"x":940,"y":384,"w":105,"h":148,"W":1125,"H":1500,"cx":0.4,"cy":0.459},{"key":"dahlia-cream","name":"Cream dahlia","photo":3,"x":570,"y":702,"w":240,"h":212,"W":1125,"H":1500,"cx":0.5,"cy":0.533},{"key":"lisianthus-rose","name":"Lisianthus","photo":3,"x":439,"y":1021,"w":216,"h":191,"W":1125,"H":1500,"cx":0.491,"cy":0.545},{"key":"lisianthus-blush","name":"Lisianthus","photo":3,"x":623,"y":1110,"w":162,"h":161,"W":1125,"H":1500,"cx":0.506,"cy":0.497},{"key":"lisianthus-pink","name":"Lisianthus","photo":3,"x":308,"y":1207,"w":225,"h":217,"W":1125,"H":1500,"cx":0.52,"cy":0.512},{"key":"echinops-front","name":"Globe thistle","photo":3,"x":309,"y":933,"w":109,"h":121,"W":1125,"H":1500,"cx":0.349,"cy":0.405},{"key":"echinops-left","name":"Globe thistle","photo":3,"x":0,"y":890,"w":134,"h":116,"W":1125,"H":1500,"cx":0.493,"cy":0.474},{"key":"hollyhock-open","name":"Hollyhock","photo":4,"x":564,"y":590,"w":375,"h":382,"W":1125,"H":1500,"cx":0.501,"cy":0.492},{"key":"hollyhock-upper","name":"Hollyhock","photo":4,"x":213,"y":230,"w":238,"h":204,"W":1125,"H":1500,"cx":0.5,"cy":0.529},{"key":"hollyhock-bell","name":"Hollyhock","photo":4,"x":87,"y":324,"w":191,"h":255,"W":1125,"H":1500,"cx":0.476,"cy":0.502},{"key":"coriander-a","name":"Coriander flowers","photo":5,"x":240,"y":412,"w":189,"h":100,"W":1125,"H":1500,"cx":0.476,"cy":0.46},{"key":"coriander-b","name":"Coriander flowers","photo":5,"x":345,"y":815,"w":210,"h":164,"W":1125,"H":1500,"cx":0.476,"cy":0.396},{"key":"coriander-c","name":"Coriander flowers","photo":5,"x":585,"y":426,"w":143,"h":129,"W":1125,"H":1500,"cx":0.49,"cy":0.457},{"key":"coriander-d","name":"Coriander flowers","photo":5,"x":345,"y":1108,"w":195,"h":237,"W":1125,"H":1500,"cx":0.513,"cy":0.494}];
 const PHOTOS = [
-  {n:3, cap:'Asiatic lilies'},
-  {n:2, cap:'Plumeria, held over the pool'},
-  {n:1, cap:'Vanda orchid'},
-  {n:5, cap:'Dahlias in the border'},
-  {n:4, cap:'Cherry blossom'},
-  {n:6, cap:'Hollyhock'},
+  {n:1, cap:'Bougainvillea against the sky'},
+  {n:2, cap:'White moth orchid'},
+  {n:3, cap:'Market bouquets'},
+  {n:4, cap:'Hollyhock'},
+  {n:5, cap:'Coriander in flower'},
 ];
-const SCALE = {'orchid-top':.86,'dahlia-scarlet':.78,'cherry-b':.78,'lily-center':.96,'hollyhock-side':.62,'hollyhock-bud':.5};
+const SCALE = {'phalaenopsis-side':.62,'lisianthus-blush':.86,'hollyhock-bell':.82,'hollyhock-upper':.9,'echinops-left':1.05,'coriander-c':.85,'bougainvillea-coral':.95};
 const TYPES = {
-  lily:    {size:1.0, cup:.15, stemR:.03,  stemCol:0x6e9b46, k:24, zeta:.13, calyx:.05,
-            leaves:{shape:'lance', n:4, t0:.5, t1:.86, len:.3, wid:.05, col:0x5d8f39, ang:.55},
-            extras:[{kind:'bud', t:.88, len:.17, size:[.045,.17], tint:.35, base:0xb9c286}]},
-  orchid:  {size:.84, cup:.04, stemR:.018, stemCol:0x5f6a3a, k:18, zeta:.12, calyx:.035,
+  bougainvillea:{size:.74, cup:0, stemR:.03, stemCol:0x5d4634, bark:true, k:48, zeta:.2, calyx:0,
+            leaves:{shape:'small', n:6, t0:.55, t1:.95, len:.12, wid:.075, col:0x3d6a2c, ang:.8},
+            extras:[{kind:'sprite', t:.66, len:.22, scale:.55, alt:true}]},
+  phalaenopsis:{size:.8, cup:.05, stemR:.022, stemCol:0x4b5a33, k:20, zeta:.12, calyx:.03,
             leaves:null,
-            extras:[{kind:'sprite', t:.8, len:.13, scale:.55, alt:true},{kind:'bud', t:.7, len:.07, size:[.03,.06], tint:.8, base:0x6a7a3a},{kind:'bud', t:.64, len:.05, size:[.025,.05], tint:.8, base:0x6a7a3a}]},
-  plumeria:{size:.66, cup:.1,  stemR:.034, stemCol:0x7c9957, k:28, zeta:.14, calyx:.03,
-            leaves:{shape:'oblong', n:2, t0:.78, t1:.84, len:.56, wid:.16, col:0x4c7b33, ang:.75},
-            extras:[{kind:'bud', t:.95, len:.11, size:[.028,.12], tint:.75, base:0xf0e2d0},{kind:'bud', t:.93, len:.09, size:[.025,.1], tint:.75, base:0xf0e2d0}]},
-  dahlia:  {size:.56, cup:.06, stemR:.028, stemCol:0x4f7a34, k:34, zeta:.15, calyx:.045,
-            leaves:{shape:'serrate', n:4, pairs:true, t0:.55, t1:.74, len:.27, wid:.13, col:0x3e6a2d, ang:.9},
+            extras:[{kind:'sprite', t:.84, len:.15, scale:.66, alt:true},{kind:'sprite', t:.74, len:.11, scale:.52, alt:true},
+                    {kind:'bud', t:.93, len:.07, size:[.034,.055], tint:.1, base:0xa3ab78},{kind:'bud', t:.96, len:.05, size:[.028,.045], tint:.1, base:0x96a06a}]},
+  dahlia:  {size:.62, cup:.07, stemR:.03, stemCol:0x4f7a34, k:34, zeta:.15, calyx:.045,
+            leaves:{shape:'serrate', n:4, pairs:true, t0:.5, t1:.72, len:.27, wid:.13, col:0x3e6a2d, ang:.9},
             extras:[{kind:'bud', t:.83, len:.17, size:[.05,.055], tint:.15, base:0x5e8a3a}]},
+  lisianthus:{size:.56, cup:.11, stemR:.022, stemCol:0x6f9a6a, k:30, zeta:.14, calyx:.04,
+            leaves:{shape:'lance', n:4, pairs:true, t0:.38, t1:.66, len:.17, wid:.065, col:0x6d9a7a, ang:.55},
+            extras:[{kind:'sprite', t:.78, len:.17, scale:.55, alt:true},{kind:'bud', t:.88, len:.12, size:[.028,.11], tint:.45, base:0xb9c79f}]},
+  echinops:{size:.4, cup:.14, stemR:.024, stemCol:0x8ea69b, k:40, zeta:.15, calyx:.03,
+            leaves:{shape:'serrate', n:3, t0:.25, t1:.55, len:.28, wid:.1, col:0x7e9b8c, ang:.7},
+            extras:[{kind:'bud', t:.84, len:.12, size:[.05,.05], tint:.55, base:0x7e88aa}]},
   hollyhock:{size:.78, cup:.09, stemR:.034, stemCol:0x7ea35c, k:30, zeta:.14, calyx:.05,
-            leaves:{shape:'round', n:3, t0:.5, t1:.7, len:.3, wid:.32, col:0x5d8b45, ang:1.0},
+            leaves:{shape:'round', n:3, t0:.45, t1:.68, len:.3, wid:.32, col:0x5d8b45, ang:1.0},
             extras:[{kind:'sprite', t:.8, len:.12, scale:.55, alt:true},{kind:'bud', t:.76, len:.08, size:[.05,.085], tint:0, base:0xf2c8cc},
                     {kind:'bud', t:.88, len:.06, size:[.045,.05], tint:0, base:0x9fba72},{kind:'bud', t:.92, len:.05, size:[.04,.045], tint:0, base:0xa6c07a},{kind:'bud', t:.95, len:.04, size:[.035,.04], tint:0, base:0xa6c07a}]},
-  cherry:  {size:.3,  cup:0,   stemR:.026, stemCol:0x6b4a38, bark:true, k:60, zeta:.22, calyx:0,
-            leaves:{shape:'small', n:4, t0:.7, t1:.96, len:.085, wid:.045, col:0x8b8a3e, ang:.75},
-            extras:[{kind:'sprite', key:'cherry-a', t:.55, len:.24, scale:.95},{kind:'sprite', key:'cherry-b', t:.66, len:.17, scale:.9},{kind:'sprite', key:'cherry-a', t:.8, len:.13, scale:.8},
-                    {kind:'bud', t:.5, len:.05, size:[.018,.026], tint:0, base:0xb0476a},{kind:'bud', t:.6, len:.04, size:[.016,.024], tint:0, base:0xc25a7a},{kind:'bud', t:.74, len:.05, size:[.018,.028], tint:0, base:0xa8405f},{kind:'bud', t:.9, len:.04, size:[.016,.024], tint:0, base:0xc25a7a}]},
+  coriander:{size:.52, cup:0, stemR:.016, stemCol:0x7fae4a, k:24, zeta:.12, calyx:0,
+            leaves:{shape:'small', n:6, t0:.3, t1:.72, len:.13, wid:.045, col:0x6fa043, ang:.95},
+            extras:[{kind:'sprite', t:.72, len:.22, scale:.66, alt:true},{kind:'sprite', t:.58, len:.17, scale:.52, alt:true}]},
 };
-// ikebana reads as lines first: heads a little smaller than in the bouquet
-for(const t of Object.values(TYPES)){ t.size*=.78; t.stemR*=.58; t.calyx*=.75; }
 const typeOf = k => k.split('-')[0];
 const byKey = Object.fromEntries(FL.map(f => [f.key, f]));
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -190,7 +190,7 @@ const slides=[];
 const wrapOff = d => { d=((d%NS)+NS)%NS; return d>NS/2 ? d-NS : d; };
 PHOTOS.forEach((p,i)=>{
   const s=document.createElement('div'); s.className='slide'; s.dataset.i=i;
-  s.innerHTML=`<img class="photo" src="../photos/${p.n}.jpg" alt="${p.cap}" draggable="false">`;
+  s.innerHTML=`<img class="photo" src="photos/${p.n}.jpg" alt="${p.cap}" draggable="false">`;
   const ghost=document.createElement('img'); ghost.className='ghost'; ghost.alt=''; s.appendChild(ghost);
   const glint=document.createElement('img'); glint.className='hover-glint'; glint.alt=''; s.appendChild(glint);
   const defs = FL.filter(f=>f.photo===p.n);
@@ -203,7 +203,7 @@ PHOTOS.forEach((p,i)=>{
   const shade=document.createElement('div'); shade.className='shade'; s.appendChild(shade);
   track.appendChild(s); slides.push({el:s, defs, ghost, glint, p});
   const th=document.createElement('button'); th.className='thumb'; th.setAttribute('role','tab'); th.setAttribute('aria-label',`Photo ${i+1}: ${p.cap}`);
-  th.innerHTML=`<img src="../photos/${p.n}.jpg" alt="">`; th.addEventListener('click',()=>go(i)); $('thumbs').appendChild(th);
+  th.innerHTML=`<img src="photos/${p.n}.jpg" alt="">`; th.addEventListener('click',()=>go(i)); $('thumbs').appendChild(th);
 });
 function layoutRoll(){
   const vw=viewer.clientWidth, vh=viewer.clientHeight;
@@ -958,11 +958,11 @@ function splash(x,z,s){
 const petals=[]; let nextPetal=5;
 const petalGeo=(()=>{ const s=new THREE.Shape(); s.moveTo(0,0); s.bezierCurveTo(.05,.02,.05,.09,0,.12); s.bezierCurveTo(-.05,.09,-.05,.02,0,0); const g=new THREE.ShapeGeometry(s,8); g.translate(0,-.06,0); return g; })();
 function dropPetal(){
-  const live=flowers.filter(f=>f.grow>=1 && f.type!=='orchid'); if(!live.length) return;
+  const live=flowers.filter(f=>f.grow>=1 && !['phalaenopsis','echinops','coriander'].includes(f.type)); if(!live.length) return;
   const f=live[Math.floor(Math.random()*live.length)];
   const col=(avg[f.def.key]||new THREE.Color(0xffc0cb)).clone();
   const m=new THREE.Mesh(petalGeo,new THREE.MeshLambertMaterial({color:col, emissive:col, emissiveIntensity:.35, side:THREE.DoubleSide, transparent:true}));
-  const sz = f.type==='cherry'? .45 : f.type==='lily'? 1.3 : 1;
+  const sz = f.type==='bougainvillea'? .8 : f.type==='hollyhock'? 1.2 : 1;
   m.scale.setScalar(sz); m.castShadow=true;
   const p=f.headGroup.position.clone().add(V(rnd(.15),rnd(.1),rnd(.15))); m.position.copy(p); bouquet.add(m);
   petals.push({m, v:V(rnd(.1),-.05,rnd(.1)), spin:V(rnd(2),rnd(2),rnd(2)), t:0, ph:Math.random()*6});
@@ -1082,7 +1082,7 @@ function loop(now){
 /* ================= boot ================= */
 go(0);
 Promise.all(FL.map(async f=>{
-  const im=await loadImg(`../cuts/${f.key}.webp`); imgs[f.key]=im;
+  const im=await loadImg(`cuts/${f.key}.webp`); imgs[f.key]=im;
   const [c,g]=cnv(im.naturalWidth,im.naturalHeight); g.drawImage(im,0,0); const d=g.getImageData(0,0,c.width,c.height);
   alpha[f.key]={w:c.width,h:c.height,data:d.data};
   let r=0,gg=0,b=0,n=0; for(let i=0;i<d.data.length;i+=16){ if(d.data[i+3]>200){ r+=d.data[i]; gg+=d.data[i+1]; b+=d.data[i+2]; n++; } }
