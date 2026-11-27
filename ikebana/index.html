@@ -619,10 +619,12 @@ function cupPatch(u){ if(!u.uOpen) u.uOpen={value:1}; return sh => { sh.uniforms
     transformed.xy *= 1.0 - cl*0.72; transformed.z += cl*rad*0.85;`); }; }
 const texCache={};
 function flowerTex(key){ if(texCache[key]) return texCache[key]; const t=new THREE.Texture(imgs[key]); t.encoding=THREE.sRGBEncoding; t.anisotropy=8; t.needsUpdate=true; return texCache[key]=t; }
+// side-view flowers hang from their calyx, not their middle
+const ANCHOR = {'hollyhock-bell':[.93,.52]};
 function headMesh(key, size, cup){
   const d=byKey[key]; const tex=flowerTex(key);
   const ar=d.w/d.h; const w = ar>=1 ? size : size*ar, h = ar>=1 ? size/ar : size;
-  const g=new THREE.PlaneGeometry(w,h,12,12); g.translate(-(d.cx-.5)*w, (d.cy-.5)*h, 0);
+  const an=ANCHOR[key]||[d.cx,d.cy]; const g=new THREE.PlaneGeometry(w,h,12,12); g.translate(-(an[0]-.5)*w, (an[1]-.5)*h, 0);
   const u={uCup:{value:cup/(Math.max(w,h)*.5)**2*.6}, uBreath:{value:0}};
   const m=new THREE.MeshLambertMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:.36, side:THREE.DoubleSide, alphaTest:.04});
   m.alphaToCoverage=true; m.onBeforeCompile=cupPatch(u);
@@ -1088,6 +1090,11 @@ function shapeStem(f, E, H){
   if(st.arch){ c.p1.copy(E).addScaledVector(UP, L*.7); }   // the orchid spike rises clean before it arches
 }
 // face a head toward n while keeping the photo's own up pointing up (as the flower stood in the garden)
+// a side-view bloom: its calyx (photo +x) points back down the stem, the bell opens onward along it
+function calyxQuat(n, th, q){
+  const x=_sa.copy(th).negate(); x.addScaledVector(n,-x.dot(n)); if(x.lengthSq()<1e-5) x.set(1,0,0); x.normalize();
+  const y=_sb.crossVectors(n,x).normalize(); _m.makeBasis(x,y,n); return q.setFromRotationMatrix(_m);
+}
 function uprightQuat(n, roll, q){
   const x=_sa.crossVectors(UP,n); if(x.lengthSq()<1e-5) x.set(1,0,0); x.normalize(); const y=_sb.crossVectors(n,x).normalize();
   _m.makeBasis(x,y,n); q.setFromRotationMatrix(_m); if(roll) q.premultiply(_q2.setFromAxisAngle(n,roll)); return q;
@@ -1108,6 +1115,7 @@ function addFlower(def, pl){
     else { n.y=Math.max(n.y,-.18); n.normalize(); const fc=n.dot(toCam); if(fc<.45) n.lerp(toCam,(.45-fc)/1.2).normalize(); }   // keep the face turned toward you
     f.N.copy(n); }
   f.qBase = uprightQuat(f.N, rnd(.14), new THREE.Quaternion());
+  if(ANCHOR[def.key]) f.qBase = calyxQuat(f.N, f.th, new THREE.Quaternion());
   const len = f.H.distanceTo(f.E0)*1.05; f.len=len;
   // stem
   const stemMat = new THREE.MeshStandardMaterial({color:T.stemCol, map:T.bark?BARK_TEX:STEM_TEX, roughness:T.bark?.9:.55, metalness:0});
@@ -1138,7 +1146,7 @@ function addFlower(def, pl){
       if(x.leaf){ const lm=f.leaves[0]?.m.material; e.leafM=new THREE.Mesh(leafGeo({shape:'ovate'}), lm); e.leafM.matrixAutoUpdate=false; e.leafM.castShadow=true; f.group.add(e.leafM); } }
     else if(x.kind==='bud'){ const col=new THREE.Color(x.base).lerp(avg[def.key]||new THREE.Color(0xffffff), x.tint);
       e.obj=new THREE.Mesh(budGeo, new THREE.MeshStandardMaterial({color:col, roughness:.5})); e.obj.matrixAutoUpdate=false; e.obj.castShadow=true; f.group.add(e.obj); }
-    else { const sib = FL.filter(o=>typeOf(o.key)===type && o.key!==def.key && o.photo>0); const key = x.alt ? (sib[Math.floor(Math.random()*sib.length)]||def).key : (x.key||def.key);
+    else { const sib = FL.filter(o=>typeOf(o.key)===type && o.key!==def.key && o.photo>0 && !ANCHOR[o.key]); const key = x.alt ? (sib[Math.floor(Math.random()*sib.length)]||def).key : (x.key||def.key);
       const hm=bloomMesh(key, T.size*(x.scale||.6), T.cup*.6); e.obj=hm.mesh; e.u=hm.u; e.obj.matrixAutoUpdate=false; f.group.add(e.obj); }
     f.extras.push(e);
   }
@@ -1317,9 +1325,8 @@ function tapWater(cx,cy){
   raycaster.setFromCamera(ndc,camera); bouquet.updateMatrixWorld(true); waterGeo.computeBoundingSphere();
   const hit=raycaster.intersectObject(water,false)[0]; if(!hit) return false;
   const p=bowl.worldToLocal(hit.point.clone()); if(!inWater(p.x,p.z,.98)) return false;
-  disturb(p.x,p.z,.05,-.1); disturb(p.x,p.z,.12,.02);
-  setTimeout(()=>disturb(p.x,p.z,.04,.05),110); setTimeout(()=>disturb(p.x,p.z,.035,-.025),260);   // the rebound sends a second, softer train of rings
-  if(!reduceMotion) burst(V(p.x,WATER_Y+.01,p.z), 0xa9bfcb, 9, .7, .22, .026, WATER_Y);
+  // one soft, wide dimple: a calm set of rings rather than a splash
+  disturb(p.x,p.z,.09,-.024); disturb(p.x,p.z,.18,.005);
   return true;
 }
 /* ================= UI ================= */
