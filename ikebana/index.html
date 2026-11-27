@@ -363,7 +363,7 @@ function updateLift(dt){
       const pl = placementFromScreen(L.tx, L.ty, L.depth);
       hoverPoint = pl.H; ringTarget=1;
       const proj = projectPlacement(pl, L.def);
-      L.sT = clamp(proj.w / L.w, .35, 1.8);
+      L.sT = clamp(proj.w / L.w, .35, 1.09);   // never grows past its size in the photo while you carry it
     } else { hoverPoint=null; ringTarget=0; L.sT = 1.09; }
     const swingT = clamp(-L.vx*1.1, -24, 24) + Math.sin(performance.now()/420)*1.2;
     L.rotV = (L.rotV + (swingT - L.rot)*.09*f) * Math.pow(.84,f); L.rot += L.rotV*f;
