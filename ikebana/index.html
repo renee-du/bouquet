@@ -388,7 +388,8 @@ function returnLift(){
 function dropLift(place){
   const L=lift; L.phase='drop';
   const proj = projectPlacement(place, L.def);
-  const s = proj.w / L.w;
+  // the cutout never swells on landing: it settles at (at most) the size you carried it, and the 3D head grows from there
+  const s3d = proj.w / L.w, s = Math.min(s3d, L.s);
   // where the cutout's own centre must land so that the flower centre lines up with the 3D head
   const cxEl = L.def.cx*L.w, cyEl = L.def.cy*L.h;
   // re-anchor the overlay on the flower centre without a visual jump, then fly it onto the 3D head
@@ -396,7 +397,7 @@ function dropLift(place){
   L.px += dx*Math.cos(a)-dy*Math.sin(a); L.py += dx*Math.sin(a)+dy*Math.cos(a);
   L.ox=cxEl; L.oy=cyEl;
   tweenLift({px:proj.x, py:proj.y, rot:-place.roll*180/Math.PI, s}, 300, easeInOut, ()=>{
-    addFlower(L.def, place); endLift(520);
+    const f=addFlower(L.def, place); if(f) f.startScale = s/s3d; endLift(380);
   });
 }
 
@@ -1193,7 +1194,8 @@ function updateFlower(f, dt){
   const tiltAxis=_v2.crossVectors(UP,f.d); const ang=f.d.length()*1.25;
   _q.copy(f.qBase); if(ang>1e-5){ _q2.setFromAxisAngle(tiltAxis.normalize(),ang); _q.premultiply(_q2); }
   f.headGroup.position.copy(head); f.headGroup.quaternion.copy(_q);
-  f.headGroup.scale.setScalar(f.out>0?1-f.out:1);
+  const settle = f.startScale ? lerp(f.startScale, 1, easeInOut(clamp(age/1.1,0,1))) : 1;
+  f.headGroup.scale.setScalar(settle*(f.out>0?1-f.out:1));
   // breathing: slow swells with a second, slower tide underneath
   f.head.u.uBreath.value = (.016*Math.sin(clock*.9+f.phase) + .008*Math.sin(clock*.37+f.phase*2.3))*(1+gust);
   if(f.head.cluster) flutterCluster(f.head.cluster, clock+f.phase, 1+gust*3);
