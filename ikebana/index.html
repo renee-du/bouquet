@@ -138,12 +138,12 @@ const PHOTOS = [
 const SCALE = {'phalaenopsis-side':.62,'lisianthus-blush':.86,'hollyhock-bell':.82,'hollyhock-upper':.9,'echinops-left':1.05,'coriander-c':.85};
 const TYPES = {
   // as in your photo: a dark woody branch, dense rounded clusters on short spurs all along the upper part, dark leaves between
-  bougainvillea:{size:.34, cup:0, stemR:.016, stemCol:0x5a4231, bark:true, k:40, zeta:.2, calyx:0, bracts3d:true,
+  bougainvillea:{size:.34, cup:0, stemR:.0095, stemCol:0x5a4231, bark:true, k:40, zeta:.2, calyx:0, bracts3d:true,
             leaves:{shape:'ovate', n:10, t0:.3, t1:.97, len:.15, wid:.1, col:0x34552a, ang:.95},
             extras:[
               ...[.5,.59,.67,.74,.81,.88,.94].map((t,i)=>({kind:'twig', t, len:.06+((i*3)%4)*.03, size:.062+((i*5)%3)*.008, tri:10+((i*7)%4), az:i*2.4+.4, leaf:i%2===1})),
               ...[.14,.24,.33,.42].map((t,i)=>({kind:'thorn', t, len:.02, az:i*2.2}))]},
-  phalaenopsis:{size:.8, cup:.05, stemR:.022, stemCol:0x4b5a33, k:20, zeta:.12, calyx:.03,
+  phalaenopsis:{size:.64, cup:.05, stemR:.022, stemCol:0x4b5a33, k:20, zeta:.12, calyx:.03,
             leaves:null,
             extras:[{kind:'sprite', t:.84, len:.15, scale:.66, alt:true},{kind:'sprite', t:.74, len:.11, scale:.52, alt:true},
                     {kind:'bud', t:.93, len:.07, size:[.034,.055], tint:.1, base:0xa3ab78},{kind:'bud', t:.96, len:.05, size:[.028,.045], tint:.1, base:0x96a06a}]},
@@ -164,6 +164,8 @@ const TYPES = {
             leaves:{shape:'small', n:6, t0:.3, t1:.72, len:.13, wid:.045, col:0x6fa043, ang:.95},
             extras:[{kind:'sprite', t:.72, len:.22, scale:.66, alt:true},{kind:'sprite', t:.58, len:.17, scale:.52, alt:true}]},
 };
+// fine, delicate stems as in a real ikebana arrangement
+for(const t of Object.values(TYPES)){ t.stemR*=t.bark ? .8 : .5; t.calyx*=.65; }
 const typeOf = k => k.split('-')[0];
 // bougainvillea branches dress themselves in single bract clusters of the colour you picked
 const byKey = Object.fromEntries(FL.map(f => [f.key, f]));
@@ -394,7 +396,7 @@ function dropLift(place){
   L.px += dx*Math.cos(a)-dy*Math.sin(a); L.py += dx*Math.sin(a)+dy*Math.cos(a);
   L.ox=cxEl; L.oy=cyEl;
   tweenLift({px:proj.x, py:proj.y, rot:-place.roll*180/Math.PI, s}, 300, easeInOut, ()=>{
-    addFlower(L.def, place); endLift(140);
+    addFlower(L.def, place); endLift(520);
   });
 }
 
@@ -643,13 +645,14 @@ const SIDE_VIEW = new Set(['phalaenopsis-side','hollyhock-bell']);
 // a1 = change along the petal, curl = tips rolling back, cupX = edges lifted, ruffle = wavy margins, ov = petal overlap
 const BLOOM = {
   hollyhock:   {rings:[{n:5, r0:.1, r1:1.06, a0:.42, a1:-.05, curl:-.32, cupX:.16, ruffle:.035, ov:1.3}], centre:{rc:.13, h:.16, z:.02}},
-  dahlia:      {rings:[{n:9, r0:0, r1:.4, a0:1.15, a1:-.4, curl:0, cupX:.22, ruffle:0, ov:1.25},
-                       {n:13, r0:.28, r1:.72, a0:.75, a1:-.3, curl:-.05, cupX:.26, ruffle:0, ov:1.2},
-                       {n:16, r0:.55, r1:1.06, a0:.32, a1:-.25, curl:-.18, cupX:.28, ruffle:0, ov:1.18}], centre:{rc:.1, h:.1, z:.07}},
-  lisianthus:  {rings:[{n:4, r0:0, r1:.46, a0:1.25, a1:-.2, curl:0, cupX:.34, ruffle:.03, ov:1.35},
-                       {n:5, r0:.3, r1:.8, a0:.85, a1:-.2, curl:-.08, cupX:.3, ruffle:.05, ov:1.3},
-                       {n:6, r0:.6, r1:1.06, a0:.42, a1:-.1, curl:-.25, cupX:.22, ruffle:.07, ov:1.28}], centre:null},
-  phalaenopsis:{rings:[{n:10, r0:.04, r1:1.06, a0:.16, a1:.02, curl:-.34, cupX:.05, ruffle:.012, ov:1.04}], centre:{rc:.07, h:.1, z:.03}, lip:true},
+  // softer forms: petals overlap generously and lift gently, so edges read as petals, not shards
+  dahlia:      {rings:[{n:7, r0:0, r1:.42, a0:.78, a1:-.3, curl:0, cupX:.1, ruffle:0, ov:1.7},
+                       {n:10, r0:.26, r1:.74, a0:.46, a1:-.2, curl:-.04, cupX:.12, ruffle:0, ov:1.6},
+                       {n:12, r0:.52, r1:1.06, a0:.2, a1:-.14, curl:-.14, cupX:.12, ruffle:0, ov:1.5}], centre:{rc:.1, h:.06, z:.05}},
+  lisianthus:  {rings:[{n:4, r0:0, r1:.48, a0:.86, a1:-.25, curl:0, cupX:.16, ruffle:.015, ov:1.7},
+                       {n:5, r0:.3, r1:.82, a0:.55, a1:-.18, curl:-.06, cupX:.14, ruffle:.025, ov:1.6},
+                       {n:6, r0:.6, r1:1.06, a0:.26, a1:-.08, curl:-.2, cupX:.1, ruffle:.03, ov:1.5}], centre:null},
+  phalaenopsis:{rings:[{n:6, r0:.04, r1:1.06, a0:.1, a1:.02, curl:-.24, cupX:.025, ruffle:.006, ov:1.22}], centre:{rc:.07, h:.07, z:.02}, lip:true},
 };
 const bloomGeoCache = {};
 function seeded(seed){ let s=seed; return ()=>{ s=(s*16807)%2147483647; return s/2147483647; }; }
@@ -692,10 +695,14 @@ function bloomGeometry(key){
   const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); geo.setIndex(idx); geo.computeVertexNormals();
   SHARED.add(geo); return bloomGeoCache[key]=geo;
 }
-function photoMats(key, u, emi=.24){
+function photoMats(key, u, emi=.3){
   const tex=flowerTex(key);
-  const m=new THREE.MeshLambertMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:emi, side:THREE.DoubleSide, alphaTest:.35});
-  m.onBeforeCompile=cupPatch(u);
+  const m=new THREE.MeshStandardMaterial({map:tex, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:emi, side:THREE.DoubleSide, alphaTest:.35, roughness:.78, metalness:0});
+  const cp=cupPatch(u);
+  // petals are thin: light coming through from behind warms them, as in a window-lit arrangement
+  m.onBeforeCompile = sh => { cp(sh); sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+    { float back = max( dot( -geometry.normal, normalize( vec3( 0.35, 0.8, 0.45 ) ) ), 0.0 );
+      reflectedLight.indirectDiffuse += diffuseColor.rgb * back * 0.32; }`); };
   const dm=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking, map:tex, alphaTest:.5, side:THREE.DoubleSide}); dm.onBeforeCompile=cupPatch(u);
   return [m,dm];
 }
@@ -703,22 +710,22 @@ function photoMats(key, u, emi=.24){
 const SPIKE_GEO=(()=>{ const g=new THREE.ConeGeometry(1,1,4); g.translate(0,.5,0); SHARED.add(g); return g; })();
 function globeMesh(key, size){
   const a=alpha[key], d=byKey[key], R=RPX[key], cxp=d.cx*a.w, cyp=d.cy*a.h, u={uCup:{value:0},uBreath:{value:0}};
-  const grp=new THREE.Group(), Rg=.72;
-  const sg=new THREE.SphereGeometry(Rg,28,20); const P=sg.attributes.position, UV=sg.attributes.uv;
-  for(let i=0;i<P.count;i++){ const x=P.getX(i), y=P.getY(i), z=P.getZ(i);  // sphere's +Z faces out of the photo
-    const s=.82/Rg; UV.setXY(i, (cxp + x*s*R)/a.w, 1-(cyp - y*s*R)/a.h); }
-  const [m,dm]=photoMats(key,u,.18); m.alphaTest=0; m.side=THREE.FrontSide;
-  const ball=new THREE.Mesh(sg,m); ball.castShadow=true; ball.receiveShadow=true; grp.add(ball);
-  const N=300, spikes=new THREE.InstancedMesh(SPIKE_GEO, new THREE.MeshStandardMaterial({roughness:.6, metalness:0}), N);
-  const col=new THREE.Color(), q=new THREE.Quaternion(), sc=V(), p=V(), n=V();
+  const grp=new THREE.Group(), Rg=.6;
+  // the photo's colour, softened toward the dusty steel-blue of a globe thistle in daylight
+  const base=avg[key].clone().lerp(new THREE.Color(0x8a93c4).convertSRGBToLinear(), .2).multiplyScalar(1.15);
+  const core=new THREE.Mesh(new THREE.SphereGeometry(Rg*.93,24,18), new THREE.MeshStandardMaterial({color:base.clone().multiplyScalar(.55), roughness:.9}));
+  core.castShadow=true; grp.add(core);
+  // each floret: a slim stalk ending in a tiny five-pointed star, packed evenly over the sphere
+  const stalk=new THREE.CylinderGeometry(.006,.01,1,4,1); stalk.translate(0,.5,0);
+  const N=900, st=new THREE.InstancedMesh(stalk, new THREE.MeshStandardMaterial({roughness:.8}), N), tips=new THREE.InstancedMesh(STAR_GEO, new THREE.MeshStandardMaterial({roughness:.6, side:THREE.DoubleSide, emissive:0xffffff, emissiveIntensity:.08}), N);
+  const col=new THREE.Color(), tcol=new THREE.Color(), q=new THREE.Quaternion(), sc=V(), p=V(), n=V(), tq=new THREE.Quaternion();
   for(let i=0;i<N;i++){ const yy=1-2*(i+.5)/N, rr=Math.sqrt(1-yy*yy), th=i*2.39996; n.set(Math.cos(th)*rr, yy, Math.sin(th)*rr);
-    // map the sphere point onto the photo to borrow its colour
-    const px=Math.round(cxp + n.x*.8*R), py=Math.round(cyp - n.y*.8*R); const k=(clamp(py,0,a.h-1)*a.w+clamp(px,0,a.w-1))*4;
-    col.setRGB(a.data[k]/255, a.data[k+1]/255, a.data[k+2]/255).convertSRGBToLinear(); if(a.data[k+3]<60) col.copy(avg[key]);
-    col.offsetHSL(0,.05,.06);
-    p.copy(n).multiplyScalar(Rg*.96); q.setFromUnitVectors(UP,n); const L=.17+Math.random()*.06; sc.set(.022,L,.022);
-    _m.compose(p,q,sc); spikes.setMatrixAt(i,_m); spikes.setColorAt(i,col); }
-  spikes.instanceColor.needsUpdate=true; spikes.castShadow=true; grp.add(spikes);
+    const px=Math.round(cxp + n.x*.8*R), py=Math.round(cyp - n.y*.8*R), k=(clamp(py,0,a.h-1)*a.w+clamp(px,0,a.w-1))*4;
+    col.setRGB(a.data[k]/255, a.data[k+1]/255, a.data[k+2]/255).convertSRGBToLinear(); if(a.data[k+3]<60 || n.z<0) col.copy(base);
+    col.lerp(base,.35).offsetHSL(rnd(.015),0,rnd(.04)); tcol.copy(col).lerp(new THREE.Color(0xe6e8fa),.3);
+    const L=.09+Math.random()*.03; p.copy(n).multiplyScalar(Rg*.9); q.setFromUnitVectors(UP,n); sc.set(1,L,1); _m.compose(p,q,sc); st.setMatrixAt(i,_m); st.setColorAt(i,col);
+    p.copy(n).multiplyScalar(Rg*.9+L); tq.setFromUnitVectors(ZAX,n).multiply(_q2.setFromAxisAngle(ZAX,Math.random()*6.28)); sc.setScalar(.55); _m.compose(p,tq,sc); tips.setMatrixAt(i,_m); tips.setColorAt(i,tcol); }
+  st.instanceColor.needsUpdate=true; tips.instanceColor.needsUpdate=true; st.castShadow=true; tips.castShadow=true; grp.add(st,tips);
   grp.scale.setScalar(size*.5); const w=new THREE.Group(); w.add(grp);
   return {mesh:w, u, w:size, h:size};
 }
@@ -1028,22 +1035,69 @@ function finishPlacement(p){
   return {H:p, N, roll:rnd(.3), droop};
 }
 
-function curveFor(f){
-  const pts=[f.E.clone(), V()];
-  if(f.T.bark){ pts.push(V(),V(),V()); } else pts.push(V(),V());
-  return new THREE.CatmullRomCurve3(pts,false,'catmullrom',.5);
+/* ---- stems with a gesture of their own ----
+   Each stem is a smooth cubic sweep from the pin to the head: it leaves the kenzan rising, and arrives at the
+   head along the direction the flower nods. Low flowers lean out and arc over so the head hangs; tall ones
+   stand nearly straight. On top of the sweep each species has its own character: wiry stems wander in a
+   faint S, woody branches jog at their nodes, the orchid spike rises clean and then arches. */
+const STEM_STYLE = {
+  hollyhock:    {k1:.3,  k2:.24, dip:.35, wig:.004, wigF:1.2, zig:0},
+  dahlia:       {k1:.36, k2:.3,  dip:.6,  wig:.007, wigF:1.5, zig:0},
+  lisianthus:   {k1:.44, k2:.36, dip:.85, wig:.012, wigF:1.8, zig:0},
+  echinops:     {k1:.46, k2:.4,  dip:.75, wig:.02,  wigF:2.4, zig:0},
+  coriander:    {k1:.5,  k2:.42, dip:1.0, wig:.022, wigF:3.1, zig:0},
+  phalaenopsis: {k1:.62, k2:.5,  dip:1.25,wig:.003, wigF:1,   zig:0, arch:true},
+  bougainvillea:{k1:.32, k2:.3,  dip:.55, wig:.004, wigF:1,   zig:.022, nodes:7},
+};
+class StemCurve extends THREE.Curve{
+  constructor(f){ super(); this.f=f; this.p0=V(); this.p1=V(); this.p2=V(); this.p3=V(); this.st=STEM_STYLE[f.type]||STEM_STYLE.dahlia; }
+  getPoint(t, target=new THREE.Vector3()){
+    const {p0,p1,p2,p3,st,f}=this, u=1-t, a=u*u*u, b=3*u*u*t, c=3*u*t*t, d=t*t*t;
+    target.set(a*p0.x+b*p1.x+c*p2.x+d*p3.x, a*p0.y+b*p1.y+c*p2.y+d*p3.y, a*p0.z+b*p1.z+c*p2.z+d*p3.z);
+    const env=Math.sin(Math.PI*t);
+    if(st.wig){ const w=st.wig*env; target.addScaledVector(f.side, w*Math.sin(t*Math.PI*st.wigF+f.phase)); target.addScaledVector(f.side2, w*.6*Math.sin(t*Math.PI*st.wigF*1.37+f.phase*1.9)); }
+    if(st.zig){ const ph=t*st.nodes+f.phase, tri=Math.abs((ph%2+2)%2-1)*2-1; target.addScaledVector(f.side, st.zig*tri*env*(.6+.4*t)); }
+    return target;
+  }
+  getTangent(t, target=new THREE.Vector3()){
+    const t1=Math.max(0,t-.002), t2=Math.min(1,t+.002); this.getPoint(t1,_sa); this.getPoint(t2,_sb); return target.copy(_sb).sub(_sa).normalize();
+  }
+}
+const _sa=V(), _sb=V(), _sc=V(), _sd=V();
+// the direction the stem arrives at its head: straight on for tall stems, bowing over and down for low ones
+function headTangent(f, E, H, out){
+  const st=STEM_STYLE[f.type]||STEM_STYLE.dahlia;
+  const h=_sc.set(H.x-E.x,0,H.z-E.z); const hl=h.length(); if(hl<1e-4) h.copy(f.side); h.normalize();
+  const lean=Math.atan2(hl, Math.max(.01,H.y-E.y));
+  const a = lerp(lean*.9, Math.PI/2 + st.dip*f.droop*.9, smooth(clamp(f.droop*1.15,0,1)));
+  return out.copy(h).multiplyScalar(Math.sin(a)).addScaledVector(UP, Math.cos(a)).normalize();
+}
+function shapeStem(f, E, H){
+  const c=f.curve, st=c.st, L=E.distanceTo(H);
+  const h=_sd.set(H.x-E.x,0,H.z-E.z); if(h.lengthSq()<1e-6) h.copy(f.side); h.normalize();
+  // it leaves the pins almost vertical, leaning only a little toward where it is going
+  c.p0.copy(E); c.p1.copy(E).addScaledVector(UP, L*st.k1).addScaledVector(h, L*st.k1*(.12+.25*f.droop));
+  headTangent(f,E,H,f.th); c.p3.copy(H); c.p2.copy(H).addScaledVector(f.th, -L*st.k2);
+  if(st.arch){ c.p1.copy(E).addScaledVector(UP, L*.7); }   // the orchid spike rises clean before it arches
+}
+// face a head toward n while keeping the photo's own up pointing up (as the flower stood in the garden)
+function uprightQuat(n, roll, q){
+  const x=_sa.crossVectors(UP,n); if(x.lengthSq()<1e-5) x.set(1,0,0); x.normalize(); const y=_sb.crossVectors(n,x).normalize();
+  _m.makeBasis(x,y,n); q.setFromRotationMatrix(_m); if(roll) q.premultiply(_q2.setFromAxisAngle(n,roll)); return q;
 }
 function addFlower(def, pl){
   const type=typeOf(def.key), T=TYPES[type];
   const f={def, type, T, H:pl.H.clone(), N:pl.N.clone(), roll:pl.roll, droop:pl.droop||0, d:V(), v:V(), born:clock, grow:0, alive:true, out:0, phase:Math.random()*6.28, group:new THREE.Group()};
-  f.qBase = new THREE.Quaternion().setFromUnitVectors(ZAX, f.N); f.qBase.premultiply(new THREE.Quaternion().setFromAxisAngle(f.N, f.roll));
-  const hr=Math.hypot(f.H.x-KZ.x,f.H.z-KZ.z);
-  f.E0 = kenzanPoint(kzCount++); f.E=f.E0.clone(); f.Tj=V();
-  f.lean = V(f.H.x-f.E0.x,0,f.H.z-f.E0.z); f.rise=.14+Math.random()*.06;
-  f.kinks=[V(rnd(.07),rnd(.03),rnd(.07)), V(rnd(.07),rnd(.03),rnd(.07))];
-  f.bowOut = V(f.H.x-KZ.x,0,f.H.z-KZ.z).normalize().multiplyScalar(.02+hr*.03*(1-f.droop));
-  f.arc = f.droop*(.12+hr*.5); f.kMul = 1-.4*f.droop;
-  f.curve = curveFor(f);
+  f.E0 = kenzanPoint(kzCount++); f.E=f.E0.clone(); f.Tj=V(); f.th=V(); f.kMul = 1-.4*f.droop;
+  { const h=V(f.H.x-f.E0.x,0,f.H.z-f.E0.z); if(h.lengthSq()<1e-6) h.set(rnd(1),0,rnd(1)); h.normalize(); f.side=V().crossVectors(UP,h).normalize(); f.side2=h; }
+  f.curve = new StemCurve(f); shapeStem(f, f.E0, f.H);
+  // the head looks where its stem carries it, turned a little toward you; orchids hold their faces upright
+  { const camL=bouquet.worldToLocal(camera.position.clone()), toCam=camL.sub(f.H).normalize();
+    const n = type==='phalaenopsis' ? V(toCam.x,0,toCam.z).normalize().multiplyScalar(.8).addScaledVector(V(f.th.x,0,f.th.z).normalize(),.35)
+            : f.th.clone().multiplyScalar(.5+.2*f.droop).addScaledVector(toCam,.55);
+    if(type==='phalaenopsis') n.y=-.05;
+    f.N.copy(n.normalize()); }
+  f.qBase = uprightQuat(f.N, rnd(.14), new THREE.Quaternion());
   const len = f.H.distanceTo(f.E0)*1.05; f.len=len;
   // stem
   const stemMat = new THREE.MeshStandardMaterial({color:T.stemCol, map:T.bark?BARK_TEX:STEM_TEX, roughness:T.bark?.9:.55, metalness:0});
@@ -1083,7 +1137,6 @@ function addFlower(def, pl){
   // the new head lands with a little weight; neighbours rustle
   f.v.set(0,-1.1,0);
   for(const o of flowers) if(o!==f){ const dd=o.H.distanceTo(f.H); if(dd<1.1){ o.v.add(o.H.clone().sub(f.H).setLength((1.1-dd)*1.6)); } }
-  burst(f.H);
   updateFlower(f,0);
   return f;
 }
@@ -1122,21 +1175,15 @@ function updateFlower(f, dt){
   const tiltAxis=_v2.crossVectors(UP,f.d); const ang=f.d.length()*1.25;
   _q.copy(f.qBase); if(ang>1e-5){ _q2.setFromAxisAngle(tiltAxis.normalize(),ang); _q.premultiply(_q2); }
   f.headGroup.position.copy(head); f.headGroup.quaternion.copy(_q);
-  const pop = age<1.2 ? 1 + .1*Math.exp(-5*age)*Math.sin(age*16) : 1;
-  f.headGroup.scale.setScalar(pop*(f.out>0?1-f.out:1));
+  f.headGroup.scale.setScalar(f.out>0?1-f.out:1);
   // breathing: slow swells with a second, slower tide underneath
   f.head.u.uBreath.value = (.016*Math.sin(clock*.9+f.phase) + .008*Math.sin(clock*.37+f.phase*2.3))*(1+gust);
-  if(f.head.u.uOpen) f.head.u.uOpen.value = (f.out>0 ? 1-f.out : 1) * easeOutBack(clamp((age-.35)/1.9,0,1));
   if(f.head.cluster) flutterCluster(f.head.cluster, clock+f.phase, 1+gust*3);
   // stem curve: end, tie, (kinks), behind-head
   const back=_v3.set(0,0,-1).applyQuaternion(_q).multiplyScalar(.035);
-  const pts=f.curve.points; const Hs=pts[pts.length-1].copy(head).add(back);
+  const Hs=_tip.copy(head).add(back);
   f.E.copy(f.E0); if(f.out>0) f.E.y += f.out*f.out*2.4;
-  f.Tj.copy(f.E).addScaledVector(f.lean,.05).y += f.rise;
-  pts[0].copy(f.E); pts[1].copy(f.Tj);
-  // the stem rises out of the pins, then (for low, leaning heads) arcs over so the head nods
-  if(f.T.bark){ pts[2].lerpVectors(f.Tj,Hs,.36).add(f.kinks[0]).addScaledVector(f.d,.2); pts[2].y+=f.arc*.75; pts[3].lerpVectors(f.Tj,Hs,.7).add(f.kinks[1]).addScaledVector(f.d,.55); pts[3].y+=f.arc*.6; }
-  else { pts[2].lerpVectors(f.Tj,Hs,.5+.12*f.droop).add(f.bowOut).addScaledVector(f.d,.42); pts[2].y+=f.arc; }
+  shapeStem(f, f.E, Hs);
   const t0=1-f.grow, R=f.T.stemR, bark=f.T.bark;
   f.tube.update(f.curve, t0, 1, t=>{ let r=R*(1.12-.32*t); if(t>.965) r*=1+(t-.965)/.035*.35; if(bark) r*=1+.18*Math.pow(Math.abs(Math.sin(t*42)),12); return r; }, f.len);
   // where the stem pierces the water: rings when it goes in, drips when it comes out
@@ -1185,8 +1232,9 @@ function updateFlower(f, dt){
       continue; }
     if(e.kind==='bud'){ _q.setFromUnitVectors(UP,_dir); _s.set(e.size[0]*vis,e.size[1]*.5*vis,e.size[0]*vis); e.obj.matrix.compose(_tip,_q,_s); }
     else { const nrm=e.bract ? _v3.copy(_rad).multiplyScalar(.4).addScaledVector(f.N,.85).addScaledVector(UP,.2).normalize() : _v3.copy(_rad).multiplyScalar(.75).addScaledVector(f.N,.5).addScaledVector(UP,.25).normalize();
-      _q.setFromUnitVectors(ZAX,nrm); _q2.setFromAxisAngle(nrm,e.az); _q.premultiply(_q2); _s.setScalar(vis); e.obj.matrix.compose(_tip,_q,_s);
-      e.u.uBreath.value=.014*Math.sin(clock*1.1+e.ph)+.006*Math.sin(clock*.41+e.ph*1.7); if(e.u.uOpen) e.u.uOpen.value=easeOutBack(clamp((age-.7-e.t*.4)/2.2,0,1)); }
+      if(f.type==='phalaenopsis'){ nrm.set(nrm.x*.5+f.N.x,0,nrm.z*.5+f.N.z).normalize(); nrm.y=-.08; nrm.normalize(); }
+      uprightQuat(nrm, Math.sin(e.az)*.25, _q); _s.setScalar(vis); e.obj.matrix.compose(_tip,_q,_s);
+      e.u.uBreath.value=.014*Math.sin(clock*1.1+e.ph)+.006*Math.sin(clock*.41+e.ph*1.7); }
   }
 }
 
@@ -1208,7 +1256,7 @@ const motes=new THREE.Points(moteGeo,new THREE.ShaderMaterial({uniforms:moteU, t
       gl_PointSize=aSz*uScale*(0.75+0.5*tw)/-mv.z; }`,
   fragmentShader:`varying float vA; varying vec3 vC; void main(){ float d=length(gl_PointCoord-0.5); if(d>0.5) discard;
       float core=smoothstep(0.5,0.0,d); gl_FragColor=vec4(mix(vC,vec3(1.0),pow(core,6.0)*0.6), core*core*vA*0.85); }`}));
-motes.frustumCulled=false; scene.add(motes);
+motes.frustumCulled=false; motes.visible=false;   // floating motes are off: the falling petals carry the quiet movement
 const bursts=[];
 function burst(H, col=0xe1b86a, n=14, up=1.2, spread=.9, size=.05, floorY=-99){
   const g=new THREE.BufferGeometry(); const P=new Float32Array(n*3), vel=[];
@@ -1318,10 +1366,7 @@ function loop(now){
     updateFlower(f,dt);
   }
   updateWater(dt,clock); bractU.uTime.value=clock;
-  // motes
-  for(let i=0;i<MOTES;i++){ const m=moteSeed[i]; m.y += m.s*dt*(1+gust*2); m.a += dt*(.05+gust*.3)/m.r; if(m.y>3.2){ m.y=WATER_Y; m.r=.2+Math.random()*1.2; }
-    moteP[i*3]=Math.sin(m.a)*m.r + Math.sin(clock*.5+m.ph)*.08; moteP[i*3+1]=m.y; moteP[i*3+2]=Math.cos(m.a)*m.r; }
-  moteGeo.attributes.position.needsUpdate=true; moteU.uTime.value=clock;
+
   for(let i=bursts.length-1;i>=0;i--){ const b=bursts[i]; b.t+=dt; const P=b.pts.geometry.attributes.position;
     for(let j=0;j<b.vel.length;j++){ if(b.floorY>-99 && P.array[j*3+1]<b.floorY && b.vel[j].y<0){ if(!b.vel[j].hit){ b.vel[j].hit=1; disturb(P.array[j*3],P.array[j*3+2],.03,-.003); } b.vel[j].set(0,0,0); continue; } b.vel[j].y-=dt*b.g; b.vel[j].multiplyScalar(.97); P.array[j*3]+=b.vel[j].x*dt; P.array[j*3+1]+=b.vel[j].y*dt; P.array[j*3+2]+=b.vel[j].z*dt; }
     P.needsUpdate=true; b.pts.material.opacity=Math.max(0,.9*(1-b.t/1.4))*(b.floorY>-99?.8:1); if(b.t>1.4){ bouquet.remove(b.pts); b.pts.geometry.dispose(); b.pts.material.dispose(); bursts.splice(i,1); } }
