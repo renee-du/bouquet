@@ -652,7 +652,7 @@ const BLOOM = {
   lisianthus:  {rings:[{n:4, r0:0, r1:.48, a0:.86, a1:-.25, curl:0, cupX:.16, ruffle:.015, ov:1.7},
                        {n:5, r0:.3, r1:.82, a0:.55, a1:-.18, curl:-.06, cupX:.14, ruffle:.025, ov:1.6},
                        {n:6, r0:.6, r1:1.06, a0:.26, a1:-.08, curl:-.2, cupX:.1, ruffle:.03, ov:1.5}], centre:null},
-  phalaenopsis:{rings:[{n:6, r0:.04, r1:1.06, a0:.1, a1:.02, curl:-.24, cupX:.025, ruffle:.006, ov:1.22}], centre:{rc:.07, h:.07, z:.02}, lip:true},
+  phalaenopsis:{rings:[{n:6, r0:.04, r1:1.06, a0:.3, a1:-.12, curl:-.42, cupX:.11, ruffle:.012, ov:1.22}], centre:{rc:.08, h:.1, z:.04}, lip:true},
 };
 const bloomGeoCache = {};
 function seeded(seed){ let s=seed; return ()=>{ s=(s*16807)%2147483647; return s/2147483647; }; }
@@ -676,7 +676,7 @@ function bloomGeometry(key){
         for(let i=0;i<=nx;i++){ const u=i/nx*2-1, th=tc+u*hw;
           let zz=z0 + g.cupX*u*u*t*(.6+.4*t) + zOff + g.ruffle*Math.sin(th*9+r*11+p)*t*t;
           // the lip of the moth orchid juts forward below the column
-          if(spec.lip){ let dth=th+Math.PI/2; dth=Math.atan2(Math.sin(dth),Math.cos(dth)); zz += .16*Math.exp(-((dth/.55)**2))*Math.exp(-(((r-.27)/.16)**2)); }
+          if(spec.lip){ let dth=th+Math.PI/2; dth=Math.atan2(Math.sin(dth),Math.cos(dth)); zz += .24*Math.exp(-((dth/.55)**2))*Math.exp(-(((r-.27)/.16)**2)); }
           const rr=rho0*(1-.04*u*u*t);
           pos.push(Math.cos(th)*rr, Math.sin(th)*rr, zz); const [U,Vv]=uvAt(r,th); uv.push(U,Vv); } }
       for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const A=base+j*(nx+1)+i, B=A+1, C=A+nx+1, D=C+1; idx.push(A,B,C, B,D,C); }
@@ -709,25 +709,32 @@ function photoMats(key, u, emi=.3){
 /* globe thistle: a sphere wearing the photo, bristling with spiky florets coloured from it */
 const SPIKE_GEO=(()=>{ const g=new THREE.ConeGeometry(1,1,4); g.translate(0,.5,0); SHARED.add(g); return g; })();
 function globeMesh(key, size){
+  // an echinops head: a slightly uneven ball whose skin carries the photo's own texture, set with
+  // irregular little five-pointed florets that flare open, crowded and varied, never a neat lattice
   const a=alpha[key], d=byKey[key], R=RPX[key], cxp=d.cx*a.w, cyp=d.cy*a.h, u={uCup:{value:0},uBreath:{value:0}};
-  const grp=new THREE.Group(), Rg=.6;
-  // the photo's colour, softened toward the dusty steel-blue of a globe thistle in daylight
-  const base=avg[key].clone().lerp(new THREE.Color(0x8a93c4).convertSRGBToLinear(), .2).multiplyScalar(1.15);
-  const core=new THREE.Mesh(new THREE.SphereGeometry(Rg*.93,24,18), new THREE.MeshStandardMaterial({color:base.clone().multiplyScalar(.55), roughness:.9}));
-  core.castShadow=true; grp.add(core);
-  // each floret: a slim stalk ending in a tiny five-pointed star, packed evenly over the sphere
-  const stalk=new THREE.CylinderGeometry(.006,.01,1,4,1); stalk.translate(0,.5,0);
-  const N=900, st=new THREE.InstancedMesh(stalk, new THREE.MeshStandardMaterial({roughness:.8}), N), tips=new THREE.InstancedMesh(STAR_GEO, new THREE.MeshStandardMaterial({roughness:.6, side:THREE.DoubleSide, emissive:0xffffff, emissiveIntensity:.08}), N);
-  const col=new THREE.Color(), tcol=new THREE.Color(), q=new THREE.Quaternion(), sc=V(), p=V(), n=V(), tq=new THREE.Quaternion();
-  for(let i=0;i<N;i++){ const yy=1-2*(i+.5)/N, rr=Math.sqrt(1-yy*yy), th=i*2.39996; n.set(Math.cos(th)*rr, yy, Math.sin(th)*rr);
-    const px=Math.round(cxp + n.x*.8*R), py=Math.round(cyp - n.y*.8*R), k=(clamp(py,0,a.h-1)*a.w+clamp(px,0,a.w-1))*4;
-    col.setRGB(a.data[k]/255, a.data[k+1]/255, a.data[k+2]/255).convertSRGBToLinear(); if(a.data[k+3]<60 || n.z<0) col.copy(base);
-    col.lerp(base,.35).offsetHSL(rnd(.015),0,rnd(.04)); tcol.copy(col).lerp(new THREE.Color(0xe6e8fa),.3);
-    const L=.09+Math.random()*.03; p.copy(n).multiplyScalar(Rg*.9); q.setFromUnitVectors(UP,n); sc.set(1,L,1); _m.compose(p,q,sc); st.setMatrixAt(i,_m); st.setColorAt(i,col);
-    p.copy(n).multiplyScalar(Rg*.9+L); tq.setFromUnitVectors(ZAX,n).multiply(_q2.setFromAxisAngle(ZAX,Math.random()*6.28)); sc.setScalar(.55); _m.compose(p,tq,sc); tips.setMatrixAt(i,_m); tips.setColorAt(i,tcol); }
-  st.instanceColor.needsUpdate=true; tips.instanceColor.needsUpdate=true; st.castShadow=true; tips.castShadow=true; grp.add(st,tips);
-  grp.scale.setScalar(size*.5); const w=new THREE.Group(); w.add(grp);
-  return {mesh:w, u, w:size, h:size};
+  const grp=new THREE.Group(), Rg=.62;
+  const sg=new THREE.SphereGeometry(Rg,40,30), P=sg.attributes.position, UV=sg.attributes.uv, n=V();
+  for(let i=0;i<P.count;i++){ n.fromBufferAttribute(P,i).normalize();
+    const bump=1+.035*Math.sin(n.x*7+n.y*5)+.025*Math.sin(n.z*9-n.y*6)-.06*Math.max(0,-n.y);   // a little flattened underneath, never perfectly round
+    P.setXYZ(i,n.x*Rg*bump,n.y*Rg*bump,n.z*Rg*bump);
+    const s=.78; const fz=Math.max(n.z,.25); UV.setXY(i,(cxp+n.x/ (1+.15*(1-fz))*s*R)/a.w, 1-(cyp-n.y/(1+.15*(1-fz))*s*R)/a.h); }
+  sg.computeVertexNormals();
+  const skin=new THREE.MeshStandardMaterial({color:avg[key].clone().multiplyScalar(.95), roughness:.9});
+  const ball=new THREE.Mesh(sg,skin); ball.castShadow=true; ball.receiveShadow=true; grp.add(ball);
+  const flo=new THREE.ConeGeometry(1,1,5,1,true); flo.rotateX(Math.PI); flo.translate(0,.5,0);   // apex at the ball, five points flaring out
+  const N=720, fl=new THREE.InstancedMesh(flo,new THREE.MeshStandardMaterial({roughness:.7, side:THREE.DoubleSide, emissive:0xffffff, emissiveIntensity:.16}),N);
+  const col=new THREE.Color(), q=new THREE.Quaternion(), sc=V(), p=V(), base=avg[key].clone();
+  for(let i=0;i<N;i++){ const yy=1-2*(i+.5)/N, rr=Math.sqrt(1-yy*yy), th=i*2.39996;
+    n.set(Math.cos(th)*rr+rnd(.09), yy+rnd(.09), Math.sin(th)*rr+rnd(.09)).normalize();
+    const px=Math.round(cxp+n.x*.78*R), py=Math.round(cyp-n.y*.78*R), k=(clamp(py,0,a.h-1)*a.w+clamp(px,0,a.w-1))*4;
+    // the thistle's own blue, a touch paler toward the crown where the light falls, varying floret to floret
+    col.copy(base).offsetHSL(rnd(.025), rnd(.06), .1 + .07*n.y + rnd(.08));
+    const L=.07+Math.random()*.06, w=.032+Math.random()*.02;
+    p.copy(n).multiplyScalar(Rg*.97); q.setFromUnitVectors(UP,n).multiply(_q2.setFromAxisAngle(UP,Math.random()*6.28)); sc.set(w,L,w);
+    _m.compose(p,q,sc); fl.setMatrixAt(i,_m); fl.setColorAt(i,col); }
+  fl.instanceColor.needsUpdate=true; fl.castShadow=true; grp.add(fl);
+  grp.scale.setScalar(size*.5); const wr=new THREE.Group(); wr.add(grp);
+  return {mesh:wr, u, w:size, h:size};
 }
 /* coriander: rays fan from the stem tip, each ending in a little umbel of five-petalled white florets,
    the outer petals of the edge florets larger, as they are in life */
@@ -1096,7 +1103,10 @@ function addFlower(def, pl){
     const n = type==='phalaenopsis' ? V(toCam.x,0,toCam.z).normalize().multiplyScalar(.8).addScaledVector(V(f.th.x,0,f.th.z).normalize(),.35)
             : f.th.clone().multiplyScalar(.5+.2*f.droop).addScaledVector(toCam,.55);
     if(type==='phalaenopsis') n.y=-.05;
-    f.N.copy(n.normalize()); }
+    n.normalize();
+    if(SIDE_VIEW.has(def.key)) n.copy(toCam).setY(toCam.y*.3).normalize();
+    else { n.y=Math.max(n.y,-.18); n.normalize(); const fc=n.dot(toCam); if(fc<.45) n.lerp(toCam,(.45-fc)/1.2).normalize(); }   // keep the face turned toward you
+    f.N.copy(n); }
   f.qBase = uprightQuat(f.N, rnd(.14), new THREE.Quaternion());
   const len = f.H.distanceTo(f.E0)*1.05; f.len=len;
   // stem
@@ -1233,6 +1243,7 @@ function updateFlower(f, dt){
     if(e.kind==='bud'){ _q.setFromUnitVectors(UP,_dir); _s.set(e.size[0]*vis,e.size[1]*.5*vis,e.size[0]*vis); e.obj.matrix.compose(_tip,_q,_s); }
     else { const nrm=e.bract ? _v3.copy(_rad).multiplyScalar(.4).addScaledVector(f.N,.85).addScaledVector(UP,.2).normalize() : _v3.copy(_rad).multiplyScalar(.75).addScaledVector(f.N,.5).addScaledVector(UP,.25).normalize();
       if(f.type==='phalaenopsis'){ nrm.set(nrm.x*.5+f.N.x,0,nrm.z*.5+f.N.z).normalize(); nrm.y=-.08; nrm.normalize(); }
+      else { nrm.lerp(f.N,.82); nrm.y=Math.max(nrm.y,-.05); nrm.normalize(); }
       uprightQuat(nrm, Math.sin(e.az)*.25, _q); _s.setScalar(vis); e.obj.matrix.compose(_tip,_q,_s);
       e.u.uBreath.value=.014*Math.sin(clock*1.1+e.ph)+.006*Math.sin(clock*.41+e.ph*1.7); }
   }
